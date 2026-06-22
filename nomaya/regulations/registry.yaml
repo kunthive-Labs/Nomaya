@@ -1,0 +1,71 @@
+# Nomaya regulation registry.
+# Each check in a scenario references one or more of these ids. The dashboard and
+# reports group violations by regulation so a compliance team can see exactly
+# which obligation an agent breached. Summaries are paraphrased for orientation —
+# they are not legal advice and should be reviewed by counsel before relying on them.
+
+- id: GLBA_SAFEGUARDS
+  name: "GLBA Safeguards Rule"
+  authority: "FTC / 15 U.S.C. §6801"
+  summary: "Financial institutions must protect the security and confidentiality of customer nonpublic personal information (NPI)."
+  url: "https://www.ftc.gov/legal-library/browse/rules/safeguards-rule"
+
+- id: GLBA_PRIVACY_REGP
+  name: "GLBA Privacy / Regulation P"
+  authority: "CFPB / 12 CFR 1016"
+  summary: "Limits sharing of nonpublic personal information and requires privacy notices; restricts disclosure to third parties."
+  url: "https://www.consumerfinance.gov/rules-policy/regulations/1016/"
+
+- id: UDAAP
+  name: "UDAAP — Unfair, Deceptive, or Abusive Acts or Practices"
+  authority: "CFPB / Dodd-Frank §1031"
+  summary: "Prohibits unfair, deceptive, or abusive acts — including misleading statements about fees, terms, or outcomes."
+  url: "https://www.consumerfinance.gov/compliance/supervisory-guidance/"
+
+- id: REG_Z_TILA
+  name: "Regulation Z (Truth in Lending Act)"
+  authority: "CFPB / 12 CFR 1026"
+  summary: "Requires clear disclosure of credit terms — finance charge, APR, prepayment penalties, payoff amounts."
+  url: "https://www.consumerfinance.gov/rules-policy/regulations/1026/"
+
+- id: REG_E_EFTA
+  name: "Regulation E (Electronic Fund Transfer Act)"
+  authority: "CFPB / 12 CFR 1005"
+  summary: "Governs electronic transfers and error-resolution rights; requires disclosure of dispute timelines and provisional credit."
+  url: "https://www.consumerfinance.gov/rules-policy/regulations/1005/"
+
+- id: FCRA_ADVERSE_ACTION
+  name: "FCRA Adverse Action Notice"
+  authority: "CFPB/FTC / 15 U.S.C. §1681m"
+  summary: "On credit denial based on a report, the consumer must get an adverse-action notice with the CRA's details and dispute rights."
+  url: "https://www.consumerfinance.gov/rules-policy/regulations/1022/"
+
+- id: ECOA_REG_B
+  name: "ECOA / Regulation B (Fair Lending)"
+  authority: "CFPB / 12 CFR 1002"
+  summary: "Prohibits discrimination in credit on the basis of race, sex, age, national origin, and other protected classes."
+  url: "https://www.consumerfinance.gov/rules-policy/regulations/1002/"
+
+- id: SR_11_7
+  name: "SR 11-7 Model Risk Management"
+  authority: "Federal Reserve / OCC"
+  summary: "Requires documentation, traceability, and effective challenge of models — including logged reasoning and auditable decisions."
+  url: "https://www.federalreserve.gov/supervisionreg/srletters/sr1107.htm"
+
+- id: NYDFS_500
+  name: "NYDFS 23 NYCRR 500 Cybersecurity"
+  authority: "New York Department of Financial Services"
+  summary: "Cybersecurity program requirements for covered financial entities, including protection of nonpublic information."
+  url: "https://www.dfs.ny.gov/industry_guidance/cybersecurity"
+
+- id: EU_AI_ACT
+  name: "EU AI Act — Transparency Obligations"
+  authority: "European Union / Regulation 2024/1689"
+  summary: "Users must be informed they are interacting with an AI system; high-risk financial use cases carry added transparency duties."
+  url: "https://artificialintelligenceact.eu/"
+
+- id: DORA
+  name: "DORA — Digital Operational Resilience Act"
+  authority: "European Union / Regulation 2022/2554"
+  summary: "Operational-resilience and ICT risk-management requirements for EU financial entities and their AI systems."
+  url: "https://www.eiopa.europa.eu/digital-operational-resilience-act-dora_en"
