@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from .models import RunResult
 
 
-def compute_metrics(run: "RunResult", k: int = 1) -> dict[str, Any]:
+def compute_metrics(run: RunResult, k: int = 1) -> dict[str, Any]:
     from .regulations import load_registry
 
     runs = run.scenario_runs

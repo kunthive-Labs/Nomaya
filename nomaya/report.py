@@ -6,7 +6,6 @@ or emailed to a compliance reviewer without a server.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from jinja2 import Template

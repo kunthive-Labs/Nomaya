@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from ..models import Check, CheckResult, CheckType, Transcript
+from ..models import Check, CheckResult, Transcript
 from ..providers.base import LLMProvider
 from .pii import detect_pii
 
