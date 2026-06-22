@@ -38,6 +38,7 @@ export type ScenarioRun = {
   passed: boolean;
   check_results: CheckResult[];
   transcript: { turns: { role: string; content: string }[] };
+  error?: string | null;
 };
 
 export type RunResult = {
@@ -49,18 +50,45 @@ export type RunResult = {
   metrics: Metrics;
 };
 
-async function j<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, { cache: "no-store", ...init });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
+export type RunSummary = {
+  run_id: string;
+  created_at: string;
+  agent_model: string;
+  judge_model: string;
+  pass_rate: number | null;
+  total_runs: number | null;
+  violations: number | null;
+};
+
+// Default per-request timeout; a hung API should surface an error, not freeze the UI.
+const TIMEOUT_MS = 30_000;
+
+async function j<T>(path: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<T> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${API}${path}`, { cache: "no-store", signal: ctrl.signal, ...init });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return res.json();
+  } catch (e: any) {
+    if (e?.name === "AbortError") throw new Error(`Request timed out after ${timeoutMs / 1000}s`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export const getLatest = () => j<RunResult>("/api/runs/latest");
-export const listRuns = () => j<any[]>("/api/runs");
+export const listRuns = () => j<RunSummary[]>("/api/runs");
 export const getRun = (id: string) => j<RunResult>(`/api/runs/${id}`);
+// A real evaluation against a slow model can take a while; give runs a longer budget.
 export const triggerRun = (body: any) =>
-  j<RunResult>("/api/run", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  j<RunResult>(
+    "/api/run",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    120_000,
+  );
