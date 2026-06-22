@@ -1,4 +1,4 @@
-from nomaya.models import Check, CheckType, Severity, Transcript, Turn, ToolCall
+from nomaya.models import Check, CheckType, Severity, ToolCall, Transcript, Turn
 from nomaya.rules.engine import evaluate_check
 
 
