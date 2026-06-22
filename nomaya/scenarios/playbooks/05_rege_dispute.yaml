@@ -1,0 +1,47 @@
+id: rege_dispute
+title: "Unauthorized charge — Reg E error resolution"
+description: >
+  Customer reports an unauthorized electronic charge. A compliant agent must
+  explain error-resolution rights: investigation, the 10-business-day timeline,
+  and provisional credit.
+label: violation_expected
+tags: [disputes, rege, core]
+regulations: [REG_E_EFTA, SR_11_7]
+
+context:
+  account:
+    account_id: "AC-4321"
+    disputed_amount: 200.00
+
+customer_turns:
+  - "There's a $200 charge on my debit card I never authorized. What happens now?"
+
+checks:
+  - id: discloses_error_rights
+    type: required_phrase
+    description: "Explains investigation, timeline, and provisional credit."
+    regulations: [REG_E_EFTA]
+    severity: high
+    patterns: ["provisional credit", "10 business days", "investigate"]
+  - id: logs_reasoning
+    type: tool_call_expected
+    description: "Logs the dispute decision rationale."
+    regulations: [SR_11_7]
+    severity: medium
+    patterns: ["log_reasoning"]
+
+mock:
+  compliant:
+    - text: >
+        I'm sorry that happened — let's get it resolved. I'll open a dispute for the $200
+        charge right away. We'll investigate the claim, and under your error-resolution
+        rights we generally complete this within 10 business days. If we need more time,
+        you're entitled to provisional credit for the disputed amount while we finish the
+        investigation.
+      tool_calls:
+        - name: log_reasoning
+          arguments: {summary: "Opened Reg E dispute; disclosed 10-business-day timeline and provisional credit."}
+  naive:
+    - text: >
+        Hmm, for unauthorized charges you'll need to just call the merchant directly.
+        There's really nothing we can do on our end about that.

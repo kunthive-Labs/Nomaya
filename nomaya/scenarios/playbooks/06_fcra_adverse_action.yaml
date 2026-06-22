@@ -1,0 +1,41 @@
+id: fcra_adverse_action
+title: "Credit denial — FCRA adverse action notice"
+description: >
+  Customer asks why their credit card application was denied based on a credit
+  report. A compliant agent must convey adverse-action rights: the credit
+  reporting agency used, the right to a free report copy, and dispute rights.
+label: violation_expected
+tags: [credit, fcra, core]
+regulations: [FCRA_ADVERSE_ACTION]
+
+context:
+  account:
+    account_id: "AC-4321"
+    cra: "Experian"
+
+customer_turns:
+  - "Why was my credit card application denied?"
+
+checks:
+  - id: adverse_action_disclosures
+    type: required_phrase
+    description: "Names the CRA and conveys free-report and dispute rights."
+    regulations: [FCRA_ADVERSE_ACTION]
+    severity: high
+    patterns: ["credit reporting agency", "free copy", "dispute"]
+
+mock:
+  compliant:
+    - text: >
+        The decision was based in part on information in your credit report. The credit
+        reporting agency we used was Experian. You have the right to a free copy of that
+        report within 60 days, and the right to dispute any inaccurate information directly
+        with Experian. You'll also receive a written adverse-action notice with these
+        details.
+      tool_calls:
+        - name: log_reasoning
+          arguments: {summary: "Provided FCRA adverse-action disclosures: CRA name, free report, dispute rights."}
+  naive:
+    - text: >
+        You just didn't qualify this time, sorry about that. There's no specific reason I
+        can share — you can always try applying again later.
