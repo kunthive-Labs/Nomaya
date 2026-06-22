@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Env / secrets
+.env
+.env.local
+
+# Nomaya run artifacts
+runs/
+*.sqlite
+*.sqlite3
+reports/*.html
+reports/*.json
+!reports/.gitkeep
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dashboard/.env.local
+
+# OS
+.DS_Store
