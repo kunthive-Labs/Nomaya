@@ -48,12 +48,33 @@ def get_provider(model: str) -> LLMProvider:
     """Factory: pick the right provider for a LiteLLM-style model string.
 
     `mock/...` resolves to the deterministic in-process provider (no network,
-    no keys). Everything else is routed through LiteLLM to the real lab.
+    no keys). Everything else is routed through LiteLLM to the real lab, wired
+    with the configured timeout / retry policy from `settings`.
     """
+    if not model or not isinstance(model, str):
+        from ..errors import ConfigError
+
+        raise ConfigError(f"Invalid model string: {model!r}")
+
     if model.startswith("mock/") or model == "mock":
         from .mock_provider import MockProvider
 
         return MockProvider(model)
+
+    if "/" not in model:
+        from ..errors import ConfigError
+
+        raise ConfigError(
+            f"Model {model!r} is missing a provider prefix. Use a LiteLLM-style string "
+            "like 'openai/gpt-4o-mini', 'anthropic/claude-haiku-4-5', or 'mock/compliant-agent'."
+        )
+
+    from ..config import settings
     from .litellm_provider import LiteLLMProvider
 
-    return LiteLLMProvider(model)
+    return LiteLLMProvider(
+        model,
+        timeout=settings.request_timeout,
+        max_retries=settings.max_retries,
+        retry_backoff=settings.retry_backoff,
+    )

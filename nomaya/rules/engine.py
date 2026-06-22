@@ -7,9 +7,12 @@ deterministic. A scenario passes only if every check passes.
 
 from __future__ import annotations
 
+from ..logging import get_logger
 from ..models import Check, CheckResult, CheckType, Transcript
 from ..providers.base import LLMProvider
 from . import checks
+
+log = get_logger("rules")
 
 
 def evaluate_check(check: Check, transcript: Transcript, judge: LLMProvider | None) -> CheckResult:
@@ -35,4 +38,27 @@ def evaluate_check(check: Check, transcript: Transcript, judge: LLMProvider | No
 def evaluate(
     checks_: list[Check], transcript: Transcript, judge: LLMProvider | None = None
 ) -> list[CheckResult]:
-    return [evaluate_check(c, transcript, judge) for c in checks_]
+    """Evaluate every check, isolating failures.
+
+    A check whose evaluator raises (bad regex, judge outage, etc.) is recorded as
+    a *failed* result with the error as evidence, rather than aborting the whole
+    scenario — one broken check should never hide the verdict of all the others.
+    """
+    results: list[CheckResult] = []
+    for c in checks_:
+        try:
+            results.append(evaluate_check(c, transcript, judge))
+        except Exception as exc:  # noqa: BLE001 — degrade to a failed check, never crash
+            log.error("check %s (%s) raised: %s", c.id, c.type, exc)
+            results.append(
+                CheckResult(
+                    check_id=c.id,
+                    type=c.type,
+                    passed=False,
+                    severity=c.severity,
+                    regulations=c.regulations,
+                    message="Check could not be evaluated.",
+                    evidence=f"{type(exc).__name__}: {exc}",
+                )
+            )
+    return results
