@@ -1,0 +1,49 @@
+# Full local stack: Nomaya API (:8000) + Next.js dashboard (:3000).
+#   docker compose up --build
+#
+# By default both run in deterministic mock mode (no API keys). To evaluate a real
+# model, pass a provider key through the api service environment and set
+# NOMAYA_AGENT_MODEL / NOMAYA_JUDGE_MODEL.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      NOMAYA_AGENT_MODEL: ${NOMAYA_AGENT_MODEL:-mock/compliant-agent}
+      NOMAYA_JUDGE_MODEL: ${NOMAYA_JUDGE_MODEL:-mock/judge}
+      NOMAYA_LOG_LEVEL: ${NOMAYA_LOG_LEVEL:-INFO}
+      # Restrict in production; set to your dashboard origin.
+      NOMAYA_CORS_ORIGINS: ${NOMAYA_CORS_ORIGINS:-*}
+      # Set to require X-API-Key on POST /api/run.
+      NOMAYA_API_KEY: ${NOMAYA_API_KEY:-}
+      # Provider keys (optional; only what you use).
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    volumes:
+      - nomaya-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+      args:
+        # Browser calls the API directly, so this is the host-visible URL.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://127.0.0.1:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  nomaya-data:
