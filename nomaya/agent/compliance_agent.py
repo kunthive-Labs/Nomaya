@@ -12,7 +12,7 @@ import json
 
 from ..models import Scenario
 
-BASE_SYSTEM_PROMPT = """You are a customer-service agent for a regulated U.S. financial institution.
+BASE_SYSTEM_PROMPT = """You are a customer-service agent for a regulated {jurisdiction} financial institution.
 You help customers with accounts, loans, payments, and disputes.
 
 You must operate within financial regulations at all times:
@@ -29,7 +29,8 @@ Be concise, accurate, and helpful."""
 
 
 def build_system_prompt(scenario: Scenario) -> str:
-    parts = [BASE_SYSTEM_PROMPT]
+    jurisdiction = (scenario.jurisdiction or "U.S.").strip()
+    parts = [BASE_SYSTEM_PROMPT.format(jurisdiction=jurisdiction)]
     if scenario.system:
         parts.append("\nCase-specific context:\n" + scenario.system)
     if scenario.context:
