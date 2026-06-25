@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getLatest, triggerRun, RunResult } from "../lib/api";
+import { getLatest, getRun, listRuns, triggerRun, RunResult, RunSummary } from "../lib/api";
 
 const AGENTS = [
   "mock/compliant-agent",
@@ -21,9 +21,15 @@ export default function Page() {
   const [k, setK] = useState(1);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [history, setHistory] = useState<RunSummary[]>([]);
+
+  function refreshHistory() {
+    listRuns().then(setHistory).catch(() => setHistory([]));
+  }
 
   useEffect(() => {
     getLatest().then(setRun).catch(() => setRun(null));
+    refreshHistory();
   }, []);
 
   async function doRun() {
@@ -32,10 +38,20 @@ export default function Page() {
     try {
       const r = await triggerRun({ agent, judge: "mock/judge", k });
       setRun(r);
+      refreshHistory();
     } catch (e: any) {
       setErr(`Could not reach the Nomaya API. Start it with \`nomaya serve\`. (${e.message})`);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function openRun(id: string) {
+    setErr(null);
+    try {
+      setRun(await getRun(id));
+    } catch (e: any) {
+      setErr(`Could not load run ${id}. (${e.message})`);
     }
   }
 
@@ -120,19 +136,53 @@ export default function Page() {
                       <div className="sid">{s.scenario_id}{m.k > 1 ? ` · attempt ${s.attempt + 1}` : ""}</div>
                     </td>
                     <td><span className="lbl">{s.label}</span></td>
-                    <td><span className={`badge ${s.passed ? "pass" : "fail"}`}>{s.passed ? "PASS" : "FAIL"}</span></td>
                     <td>
-                      {s.check_results.map((c) => (
-                        <span key={c.check_id} className={`chip ${c.passed ? "pass" : "fail"}`} title={`${c.message} ${c.evidence}`.trim()}>
-                          {c.passed ? "✓" : "✕"} {c.check_id}
-                        </span>
-                      ))}
+                      {s.error
+                        ? <span className="badge fail" title={s.error}>ERROR</span>
+                        : <span className={`badge ${s.passed ? "pass" : "fail"}`}>{s.passed ? "PASS" : "FAIL"}</span>}
+                    </td>
+                    <td>
+                      {s.error
+                        ? <span className="chip fail" title={s.error}>could not evaluate</span>
+                        : s.check_results.map((c) => (
+                            <span key={c.check_id} className={`chip ${c.passed ? "pass" : "fail"}`} title={`${c.message} ${c.evidence}`.trim()}>
+                              {c.passed ? "✓" : "✕"} {c.check_id}
+                            </span>
+                          ))}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          {history.length > 0 && (
+            <>
+              <h2>Run history</h2>
+              <div className="panel scroll">
+                <table>
+                  <thead>
+                    <tr><th>When</th><th>Agent</th><th>Pass rate</th><th>Violations</th><th></th></tr>
+                  </thead>
+                  <tbody>
+                    {history.map((h) => (
+                      <tr key={h.run_id} className={h.run_id === run.run_id ? "reg-row current" : "reg-row"}>
+                        <td>{new Date(h.created_at).toLocaleString()}</td>
+                        <td><span className="tag">{h.agent_model}</span></td>
+                        <td>{h.pass_rate === null ? "—" : pct(h.pass_rate)}</td>
+                        <td><span className="count">{h.violations ?? 0}</span></td>
+                        <td>
+                          {h.run_id === run.run_id
+                            ? <span className="sid">viewing</span>
+                            : <button className="link" onClick={() => openRun(h.run_id)}>view</button>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           <p className="foot">
             Regulation mappings are paraphrased for orientation and are not legal advice — review with

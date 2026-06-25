@@ -1,5 +1,11 @@
 # Nomaya
 
+[![eval](https://github.com/kunthive-Labs/Nomaya/actions/workflows/eval.yml/badge.svg)](https://github.com/kunthive-Labs/Nomaya/actions/workflows/eval.yml)
+[![python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![ruff](https://img.shields.io/badge/lint-ruff-261230)](pyproject.toml)
+[![checked: mypy](https://img.shields.io/badge/types-mypy-2a6db2)](pyproject.toml)
+
 **A provider-agnostic compliance evaluation suite for AI agents in financial services.**
 
 Generic LLM evals miss the subtle, high-stakes failures that matter in regulated
@@ -93,6 +99,55 @@ a bad one without spending tokens.
 > advice**. Mappings should be reviewed by qualified compliance/legal staff before relying
 > on them for a deployment decision.
 
+## Bring your own scenarios & regulations (no fork needed)
+
+Nomaya is designed to be adopted, not forked. Point it at your own content with two
+env vars, or scaffold a workspace in one command:
+
+```bash
+nomaya init my-suite          # creates my-suite/{playbooks/, registry.yaml, .env}
+# edit the YAML, then:
+NOMAYA_PLAYBOOKS_DIR=my-suite/playbooks \
+NOMAYA_REGISTRY_PATH=my-suite/registry.yaml \
+  nomaya run
+# or per-invocation flags:
+nomaya run --playbooks-dir my-suite/playbooks --registry my-suite/registry.yaml
+```
+
+A playbook is a single YAML file (see `nomaya/scenarios/playbooks/` for templates).
+Set `jurisdiction` (e.g. `EU`, `UK`) to retune the agent persona beyond the U.S.
+default. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the check-type and
+provider extension points.
+
+## Deployment
+
+```bash
+docker compose up --build      # API on :8000, dashboard on :3000
+```
+
+Full guide — real-model config, the security knobs (`NOMAYA_API_KEY`,
+`NOMAYA_CORS_ORIGINS`, bounded `k`), and the resilience tunables
+(`NOMAYA_REQUEST_TIMEOUT`, `NOMAYA_MAX_RETRIES`) — is in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## Production & security
+
+Real evaluation runs spend tokens, so in any shared deployment set `NOMAYA_API_KEY`
+(enforces `X-API-Key` on `POST /api/run`) and restrict `NOMAYA_CORS_ORIGINS` to your
+dashboard origin. Provider calls have timeouts + bounded retries so a flaky provider
+doesn't abort a run; one failing scenario is isolated as *errored* rather than killing
+the suite. See [SECURITY.md](SECURITY.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Development
+
+```bash
+make install     # venv + backend (dev) + dashboard deps
+make lint        # ruff
+make typecheck   # mypy
+make test        # pytest (39 tests, all offline)
+make eval        # compliance gate: clears the good agent, catches the bad one
+```
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

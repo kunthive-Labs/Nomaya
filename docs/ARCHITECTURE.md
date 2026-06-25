@@ -57,6 +57,27 @@ agent text, all turns, or tool calls.
 `detect_pii` signature is the seam to drop in an ML recognizer (e.g. Presidio)
 without touching the engine.
 
+## Production hardening
+
+- **Resilience seam (`providers/litellm_provider.py`).** Real model calls run with a
+  request timeout and bounded exponential-backoff retries on transient failures
+  (timeouts, rate limits, 5xx). Failures are translated into the `nomaya/errors.py`
+  hierarchy so callers can distinguish a config mistake (`ConfigError`) from a
+  provider hiccup (`ProviderTimeout`, `ProviderRateLimit`).
+- **Error isolation.** The orchestrator records a failed scenario as an *errored*
+  `ScenarioRun` (with `error` set) rather than aborting the whole suite; the rules
+  engine degrades a raising evaluator to a failed check. One bad scenario or check
+  never hides the verdict of the rest.
+- **Logging (`nomaya/logging.py`).** Stdlib logging, level via `NOMAYA_LOG_LEVEL`,
+  secret-safe. Library code only ever calls `get_logger`; the CLI and API configure
+  handlers once at startup, so an embedding app keeps control of its own logging.
+- **Bring-your-own content.** `settings.playbooks_dir` / `settings.registry_path`
+  honor `NOMAYA_PLAYBOOKS_DIR` / `NOMAYA_REGISTRY_PATH`, and `nomaya init` scaffolds a
+  workspace — adopters run their own scenarios without forking. Scenarios carry a
+  `jurisdiction` so the agent persona isn't hardcoded to one country.
+- **API guards (`api.py`).** Configurable CORS, optional `X-API-Key` auth on mutating
+  routes, a bounded `k`, and a DB-pinging `/api/health`. See `SECURITY.md`.
+
 ## Design choices worth noting
 
 - **Ground-truth labels drive precision/recall.** `benign_control` scenarios are

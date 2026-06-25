@@ -10,20 +10,25 @@
 
 from __future__ import annotations
 
-import sys
-
 import typer
 from rich.console import Console
 from rich.table import Table
 
+from . import store
 from .config import settings
+from .logging import configure_logging
 from .orchestrator import run_suite
 from .report import write_reports
 from .scenarios import load_scenarios
-from . import store
 
 app = typer.Typer(add_completion=False, help="Nomaya — finance compliance agent evaluation suite.")
 console = Console()
+
+
+@app.callback()
+def _main() -> None:
+    """Initialize logging once for every command (level from NOMAYA_LOG_LEVEL)."""
+    configure_logging()
 
 
 @app.command()
@@ -37,8 +42,11 @@ def run(
     fail_under: float = typer.Option(
         0.0, help="Exit non-zero if pass rate is below this (for CI gating)."
     ),
+    playbooks_dir: str = typer.Option(None, help="Directory of your own *.yaml playbooks."),
+    registry: str = typer.Option(None, help="Path to your own regulation registry.yaml."),
 ):
     """Evaluate the scenario suite against an agent."""
+    _apply_content_overrides(playbooks_dir, registry)
     agent = agent or settings.agent_model
     judge = judge or settings.judge_model
     tag_list = [t.strip() for t in tags.split(",")] if tags else None
@@ -93,9 +101,73 @@ def _metrics_table(m: dict) -> None:
     console.print(t)
 
 
+def _apply_content_overrides(playbooks_dir: str | None, registry: str | None) -> None:
+    """Point the loaders at user-supplied content for this invocation."""
+    import os
+
+    if playbooks_dir:
+        os.environ["NOMAYA_PLAYBOOKS_DIR"] = playbooks_dir
+    if registry:
+        os.environ["NOMAYA_REGISTRY_PATH"] = registry
+
+
 @app.command()
-def scenarios():
+def init(
+    directory: str = typer.Argument(".", help="Where to scaffold a Nomaya workspace."),
+):
+    """Scaffold a starter workspace (playbooks/ + registry.yaml + .env) you can edit.
+
+    Lets a new adopter run their own scenarios without forking Nomaya:
+
+        nomaya init my-suite
+        NOMAYA_PLAYBOOKS_DIR=my-suite/playbooks \\
+        NOMAYA_REGISTRY_PATH=my-suite/registry.yaml nomaya run
+    """
+    import shutil
+    from pathlib import Path
+
+    from .config import DEFAULT_PLAYBOOKS_DIR, DEFAULT_REGISTRY_PATH
+
+    root = Path(directory)
+    pb = root / "playbooks"
+    pb.mkdir(parents=True, exist_ok=True)
+
+    # Seed with two representative playbooks so the user has a working template.
+    seeds = sorted(DEFAULT_PLAYBOOKS_DIR.glob("*.yaml"))[:2]
+    for src in seeds:
+        dst = pb / src.name
+        if not dst.exists():
+            shutil.copyfile(src, dst)
+
+    reg_dst = root / "registry.yaml"
+    if not reg_dst.exists():
+        shutil.copyfile(DEFAULT_REGISTRY_PATH, reg_dst)
+
+    env_dst = root / ".env"
+    if not env_dst.exists():
+        env_dst.write_text(
+            "NOMAYA_PLAYBOOKS_DIR=playbooks\n"
+            "NOMAYA_REGISTRY_PATH=registry.yaml\n"
+            "NOMAYA_AGENT_MODEL=mock/compliant-agent\n"
+            "NOMAYA_JUDGE_MODEL=mock/judge\n"
+        )
+
+    console.print(f"[green]Scaffolded[/green] a Nomaya workspace at [bold]{root}[/bold]:")
+    console.print(f"  • {pb}/ ({len(list(pb.glob('*.yaml')))} starter playbooks)")
+    console.print(f"  • {reg_dst}")
+    console.print(f"  • {env_dst}")
+    console.print(
+        "\nEdit the playbooks, then run:\n"
+        f"  [cyan]NOMAYA_PLAYBOOKS_DIR={pb} NOMAYA_REGISTRY_PATH={reg_dst} nomaya run[/cyan]"
+    )
+
+
+@app.command()
+def scenarios(
+    playbooks_dir: str = typer.Option(None, help="Directory of your own *.yaml playbooks."),
+):
     """List available scenario playbooks."""
+    _apply_content_overrides(playbooks_dir, None)
     t = Table(title="Scenarios")
     t.add_column("ID"); t.add_column("Title"); t.add_column("Label"); t.add_column("Regulations")
     for s in load_scenarios():

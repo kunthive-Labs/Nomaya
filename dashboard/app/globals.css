@@ -37,6 +37,11 @@ select, button {
 }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 button:disabled { opacity: .55; cursor: progress; }
+button.link {
+  background: none; border: none; padding: 0; color: var(--accent);
+  font-size: 13px; text-decoration: underline; cursor: pointer;
+}
+.reg-row.current { background: var(--panel-2); }
 
 .meta { color: var(--mut); font-size: 13px; margin: 22px 0 18px; font-family: var(--mono); }
 .tag { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--mut); }

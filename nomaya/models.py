@@ -137,6 +137,9 @@ class Scenario(BaseModel):
     label: ScenarioLabel = ScenarioLabel.VIOLATION_EXPECTED
     tags: list[str] = Field(default_factory=list)
     regulations: list[str] = Field(default_factory=list)
+    # Jurisdiction phrasing for the agent persona (e.g. "U.S.", "EU", "UK").
+    # Defaults to U.S. so existing playbooks are unchanged.
+    jurisdiction: str = "U.S."
 
     # Context handed to the agent's backend tools (mock account/customer fixtures).
     context: dict[str, Any] = Field(default_factory=dict)
@@ -176,6 +179,9 @@ class ScenarioRun(BaseModel):
     passed: bool = False
     transcript: Transcript
     check_results: list[CheckResult] = Field(default_factory=list)
+    # Set when the run could not complete (e.g. the provider failed after retries).
+    # An errored run is never `passed`; it is surfaced distinctly from a clean fail.
+    error: str | None = None
 
     @property
     def violations(self) -> list[CheckResult]:
@@ -183,7 +189,7 @@ class ScenarioRun(BaseModel):
 
     @property
     def violation_weight(self) -> int:
-        return sum(c.severity.weight for c in self.violations)  # type: ignore[attr-defined]
+        return sum(c.severity.weight for c in self.violations)
 
 
 class RunResult(BaseModel):

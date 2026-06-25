@@ -14,17 +14,18 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .agent.compliance_agent import build_system_prompt
 from .agent.tools import TOOL_SCHEMAS, execute_tool
 from .config import settings
+from .logging import get_logger
 from .metrics import compute_metrics
 from .models import RunResult, Scenario, ScenarioRun, ToolCall, Transcript, Turn, Usage
 from .providers.base import LLMProvider, get_provider
 from .rules.engine import evaluate
 
-MAX_TOOL_ITERS = 5
+log = get_logger("orchestrator")
 
 
 def _to_openai_tool_calls(tool_calls: list[dict]) -> list[dict]:
@@ -56,7 +57,7 @@ def run_scenario(
         agent_tool_calls: list[ToolCall] = []
         final_content = ""
 
-        for _ in range(MAX_TOOL_ITERS):
+        for _ in range(settings.max_tool_iters):
             resp = agent.complete(
                 messages,
                 tools=TOOL_SCHEMAS,
@@ -77,7 +78,11 @@ def run_scenario(
                     }
                 )
                 for tc in resp.tool_calls:
-                    result = execute_tool(tc["name"], tc.get("arguments", {}), scenario.context)
+                    try:
+                        result = execute_tool(tc["name"], tc.get("arguments", {}), scenario.context)
+                    except Exception as exc:  # noqa: BLE001 — a tool fault must not abort the run
+                        log.warning("tool %s raised: %s", tc.get("name"), exc)
+                        result = {"error": f"tool execution failed: {exc}"}
                     agent_tool_calls.append(
                         ToolCall(name=tc["name"], arguments=tc.get("arguments", {}), result=result)
                     )
@@ -122,14 +127,32 @@ def run_suite(
     agent = get_provider(agent_model)
     judge = get_provider(judge_model)
 
+    log.info(
+        "run start · %d scenarios × k=%d · agent=%s judge=%s",
+        len(scenarios), k, agent_model, judge_model,
+    )
+
     scenario_runs: list[ScenarioRun] = []
     for scenario in scenarios:
         for attempt in range(k):
-            scenario_runs.append(run_scenario(scenario, agent, judge, attempt=attempt))
+            try:
+                sr = run_scenario(scenario, agent, judge, attempt=attempt)
+            except Exception as exc:  # noqa: BLE001 — isolate: one scenario must not kill the suite
+                log.error("scenario %s attempt %d errored: %s", scenario.id, attempt, exc)
+                sr = ScenarioRun(
+                    scenario_id=scenario.id,
+                    title=scenario.title,
+                    label=scenario.label,
+                    attempt=attempt,
+                    passed=False,
+                    transcript=Transcript(model=agent_model),
+                    error=f"{type(exc).__name__}: {exc}",
+                )
+            scenario_runs.append(sr)
 
     run = RunResult(
-        run_id=f"run_{datetime.now(timezone.utc):%Y%m%d_%H%M%S}_{uuid.uuid4().hex[:6]}",
-        created_at=datetime.now(timezone.utc).isoformat(),
+        run_id=f"run_{datetime.now(UTC):%Y%m%d_%H%M%S}_{uuid.uuid4().hex[:6]}",
+        created_at=datetime.now(UTC).isoformat(),
         agent_model=agent_model,
         judge_model=judge_model,
         scenario_runs=scenario_runs,
