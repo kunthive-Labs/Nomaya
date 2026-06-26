@@ -7,7 +7,7 @@ finance — leaking nonpublic personal information, omitting a required Truth-in
 disclosure, making a UDAAP-deceptive statement about fees, or acting on a transfer
 without authorization. Nomaya is a purpose-built harness that runs an AI customer-service
 agent through regulation-mapped scenarios in a sandbox and checks its behavior against
-named obligations (GLBA, UDAAP, Reg Z, Reg E, FCRA, ECOA, SR 11-7, NYDFS 500, EU AI Act).
+named obligations (GLBA, UDAAP, Reg Z, Reg E, FCRA, ECOA, SR 11-7, NYDFS 500, EU AI Act, DORA).
 
 It is **provider-agnostic**: the agent under test and the LLM-judge can be any leading
 lab's model — OpenAI, Anthropic, Google, Mistral, Cohere, Groq, or a local model via
@@ -29,7 +29,7 @@ offline in deterministic **mock** mode, which is what makes it CI- and demo-frie
 ## Quick start
 
 ```bash
-uv venv --python 3.12 && uv pip install -e ".[dev]"
+uv sync --locked          # installs Python 3.12 + pinned deps from uv.lock
 source .venv/bin/activate
 
 # Run the full suite in deterministic mock mode (no API key needed)
@@ -45,12 +45,46 @@ nomaya run --agent ollama/llama3.1       # fully local
 # Reliability: run each scenario k times, report the pass@k drop
 nomaya run --k 5
 
+# CI gating: fail on pass rate and/or the severity-weighted score
+nomaya run --fail-under 1.0 --fail-under-weighted 1.0
+
 # Other commands
 nomaya scenarios      # list playbooks
 nomaya regulations    # list the regulation registry
 nomaya list           # past runs
 nomaya serve          # dashboard API on :8000
 ```
+
+## Dashboard
+
+```bash
+nomaya serve                             # FastAPI on :8000 (terminal 1)
+cd dashboard && npm install && npm run dev   # Next.js on :3000 (terminal 2)
+```
+
+The dashboard reaches the API through a server-side proxy
+(`dashboard/app/api/[...path]/route.ts`), so if the API has a bearer token the
+token stays out of the browser. Configure via `dashboard/.env.local` (copy from
+`.env.local.example`).
+
+Or run both with Docker:
+
+```bash
+docker compose up --build      # API on :8000, dashboard on :3000
+```
+
+## Configuration
+
+Copy `.env.example` to `.env`. Besides provider keys, the notable variables:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `NOMAYA_AGENT_MODEL` | `mock/compliant-agent` | Default agent under test. |
+| `NOMAYA_JUDGE_MODEL` | `mock/judge` | Default LLM-judge. |
+| `NOMAYA_DB_PATH` | `<repo>/nomaya.sqlite3` | SQLite run history. |
+| `NOMAYA_API_TOKEN` | *(empty — auth off)* | Bearer token for every API route except `/api/health`. |
+| `NOMAYA_ALLOWED_MODELS` | mock models only | Models `POST /api/run` may target; `*` allows any. Protects against strangers burning your provider credits. |
+| `NOMAYA_CORS_ORIGINS` | localhost:3000 | Browser origins allowed by CORS (direct mode only). |
 
 ## What it measures
 
@@ -59,6 +93,7 @@ nomaya serve          # dashboard API on :8000
 | **Pass rate** | Scenario runs with zero violations. |
 | **Violation detection rate** | Of scenarios that tempt a violation, how many were flagged (recall — measure against a non-compliant agent). |
 | **False-positive rate** | Of benign control scenarios, how many were wrongly flagged (precision proxy). |
+| **Weighted score** | 1 − (severity weight of failed checks ÷ total possible weight); a critical PII leak costs far more than an info-level nit. Gate with `--fail-under-weighted`. |
 | **Compliance coverage** | Distinct regulations exercised ÷ regulations known. |
 | **pass@k reliability** | Fraction passing *all* k attempts vs any; the gap is the reliability drop (CLEAR-style). |
 | **Cost & latency** | $/run and throughput, summed from provider usage. |
