@@ -72,6 +72,10 @@ td .sid { color: var(--mut); font-family: var(--mono); font-size: 12px; }
 .reg-row td:last-child { text-align: right; }
 .count { font-family: var(--mono); font-weight: 700; color: var(--bad); }
 
+.row-click { cursor: pointer; }
+.row-click:hover td { background: var(--panel-2); }
+.row-active td { background: rgba(91, 141, 239, .08); }
+
 .empty { color: var(--mut); padding: 48px; text-align: center; }
 .err { color: var(--bad); background: rgba(255,93,108,.08); border: 1px solid rgba(255,93,108,.3); border-radius: 10px; padding: 14px 16px; }
 .foot { color: var(--mut); font-size: 12px; margin-top: 48px; border-top: 1px solid var(--line); padding-top: 18px; }

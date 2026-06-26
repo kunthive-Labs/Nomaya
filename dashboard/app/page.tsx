@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getLatest, triggerRun, RunResult } from "../lib/api";
+import { getLatest, getRun, listRuns, triggerRun, RunResult, RunSummary } from "../lib/api";
 
 const AGENTS = [
   "mock/compliant-agent",
@@ -17,14 +17,24 @@ const pct = (n: number) => `${(n * 100).toFixed(n === 1 || n === 0 ? 0 : 1)}%`;
 
 export default function Page() {
   const [run, setRun] = useState<RunResult | null>(null);
+  const [history, setHistory] = useState<RunSummary[]>([]);
   const [agent, setAgent] = useState(AGENTS[0]);
   const [k, setK] = useState(1);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  function refreshHistory() {
+    listRuns().then(setHistory).catch(() => setHistory([]));
+  }
+
   useEffect(() => {
     getLatest().then(setRun).catch(() => setRun(null));
+    refreshHistory();
   }, []);
+
+  function loadRun(id: string) {
+    getRun(id).then(setRun).catch(() => {});
+  }
 
   async function doRun() {
     setBusy(true);
@@ -32,6 +42,7 @@ export default function Page() {
     try {
       const r = await triggerRun({ agent, judge: "mock/judge", k });
       setRun(r);
+      refreshHistory();
     } catch (e: any) {
       setErr(`Could not reach the Nomaya API. Start it with \`nomaya serve\`. (${e.message})`);
     } finally {
@@ -49,7 +60,7 @@ export default function Page() {
           <h1>Finance Compliance Agent Evaluation</h1>
           <p className="subtitle">
             Run any lab&apos;s agent through regulation-mapped scenarios and verify behavior against
-            named obligations — GLBA, UDAAP, Reg Z/E, FCRA, ECOA, SR&nbsp;11-7, NYDFS&nbsp;500, EU&nbsp;AI&nbsp;Act.
+            named obligations — GLBA, UDAAP, Reg Z/E, FCRA, ECOA, SR&nbsp;11-7, NYDFS&nbsp;500, EU&nbsp;AI&nbsp;Act, DORA.
           </p>
         </div>
         <div className="toolbar">
@@ -82,6 +93,7 @@ export default function Page() {
             <Card label="Pass rate" value={pct(m.pass_rate)} tone={m.pass_rate >= 0.9 ? "ok" : m.pass_rate >= 0.6 ? "warn" : "bad"} bar={m.pass_rate} />
             <Card label="Detection rate" value={pct(m.violation_detection_rate)} note="recall on tempting cases" />
             <Card label="False positives" value={pct(m.false_positive_rate)} tone={m.false_positive_rate === 0 ? "ok" : "bad"} />
+            <Card label="Weighted score" value={pct(m.weighted_score ?? 1)} tone={(m.weighted_score ?? 1) >= 0.9 ? "ok" : (m.weighted_score ?? 1) >= 0.6 ? "warn" : "bad"} note="severity-weighted" />
             <Card label="Coverage" value={pct(m.compliance_coverage)} note={`${m.regulations_covered.length}/${m.regulations_total} regulations`} bar={m.compliance_coverage} />
             <Card label="pass@k reliability" value={pct(m.pass_all_k)} note={`drop ${pct(m.reliability_drop)} · k=${m.k}`} />
             <Card label="Cost / run" value={`$${m.cost_usd_per_run.toFixed(4)}`} note={`${m.throughput_runs_per_sec} runs/s`} />
@@ -133,6 +145,40 @@ export default function Page() {
               </tbody>
             </table>
           </div>
+
+          {history.length > 0 && (
+            <>
+              <h2>Run history</h2>
+              <div className="panel scroll">
+                <table>
+                  <thead>
+                    <tr><th>Run</th><th>When</th><th>Agent</th><th>Pass rate</th><th>Violations</th></tr>
+                  </thead>
+                  <tbody>
+                    {history.map((r) => (
+                      <tr
+                        key={r.run_id}
+                        className={`row-click ${r.run_id === run.run_id ? "row-active" : ""}`}
+                        onClick={() => loadRun(r.run_id)}
+                      >
+                        <td><span className="sid">{r.run_id}</span></td>
+                        <td className="lbl">{new Date(r.created_at).toLocaleString()}</td>
+                        <td><span className="tag">{r.agent_model}</span></td>
+                        <td>
+                          {r.pass_rate !== null ? (
+                            <span className={`badge ${r.pass_rate >= 0.9 ? "pass" : "fail"}`}>{pct(r.pass_rate)}</span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td><span className="count">{r.violations ?? "—"}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           <p className="foot">
             Regulation mappings are paraphrased for orientation and are not legal advice — review with

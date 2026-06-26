@@ -1,4 +1,7 @@
-export const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+// Default "" = same-origin requests through the Next.js proxy route
+// (app/api/[...path]/route.ts), which attaches the server-side bearer token.
+// Set NEXT_PUBLIC_API_URL to talk to the FastAPI service directly (no token).
+export const API = process.env.NEXT_PUBLIC_API_URL || "";
 
 export type Metrics = {
   k: number;
@@ -14,6 +17,9 @@ export type Metrics = {
   pass_all_k: number;
   reliability_drop: number;
   total_violations: number;
+  violation_weight?: number;
+  possible_weight?: number;
+  weighted_score?: number;
   violations_by_regulation: Record<string, number>;
   violations_by_severity: Record<string, number>;
   cost_usd_per_run: number;
@@ -40,6 +46,16 @@ export type ScenarioRun = {
   transcript: { turns: { role: string; content: string }[] };
 };
 
+export type RunSummary = {
+  run_id: string;
+  created_at: string;
+  agent_model: string;
+  judge_model: string;
+  pass_rate: number | null;
+  total_runs: number | null;
+  violations: number | null;
+};
+
 export type RunResult = {
   run_id: string;
   created_at: string;
@@ -56,7 +72,7 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const getLatest = () => j<RunResult>("/api/runs/latest");
-export const listRuns = () => j<any[]>("/api/runs");
+export const listRuns = (limit = 50) => j<RunSummary[]>(`/api/runs?limit=${limit}`);
 export const getRun = (id: string) => j<RunResult>(`/api/runs/${id}`);
 export const triggerRun = (body: any) =>
   j<RunResult>("/api/run", {
