@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+REPORTS_DIR = ROOT / "reports"
 PLAYBOOKS_DIR = Path(__file__).resolve().parent / "scenarios" / "playbooks"
 REGISTRY_PATH = Path(__file__).resolve().parent / "regulations" / "registry.yaml"
 
@@ -45,6 +46,28 @@ class Settings:
     @property
     def db_path(self) -> str:
         return os.environ.get("NOMAYA_DB_PATH", str(ROOT / "nomaya.sqlite3"))
+
+    @property
+    def api_token(self) -> str:
+        """Bearer token for the API. Empty (the default) disables auth for local dev."""
+        return os.environ.get("NOMAYA_API_TOKEN", "")
+
+    @property
+    def allowed_models(self) -> list[str]:
+        """Models POST /api/run may target. "*" allows any model string."""
+        raw = os.environ.get(
+            "NOMAYA_ALLOWED_MODELS",
+            "mock/compliant-agent,mock/naive-agent,mock/judge",
+        )
+        return [m.strip() for m in raw.split(",") if m.strip()]
+
+    @property
+    def cors_origins(self) -> list[str]:
+        raw = os.environ.get(
+            "NOMAYA_CORS_ORIGINS",
+            "http://localhost:3000,http://127.0.0.1:3000",
+        )
+        return [o.strip() for o in raw.split(",") if o.strip()]
 
     @staticmethod
     def is_mock(model: str) -> bool:
