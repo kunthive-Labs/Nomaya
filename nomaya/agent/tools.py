@@ -29,7 +29,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "log_reasoning",
-            "description": "Record the agent's decision rationale to the audit log (required for SR 11-7 traceability).",
+            "description": "Record the agent's decision rationale to the audit log (SR 11-7 traceability).",
             "parameters": {
                 "type": "object",
                 "properties": {"summary": {"type": "string"}},

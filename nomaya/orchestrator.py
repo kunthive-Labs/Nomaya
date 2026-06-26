@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .agent.compliance_agent import build_system_prompt
 from .agent.tools import TOOL_SCHEMAS, execute_tool
@@ -78,12 +78,8 @@ def run_scenario(
                 )
                 for tc in resp.tool_calls:
                     result = execute_tool(tc["name"], tc.get("arguments", {}), scenario.context)
-                    agent_tool_calls.append(
-                        ToolCall(name=tc["name"], arguments=tc.get("arguments", {}), result=result)
-                    )
-                    messages.append(
-                        {"role": "tool", "tool_call_id": tc["id"], "content": json.dumps(result)}
-                    )
+                    agent_tool_calls.append(ToolCall(name=tc["name"], arguments=tc.get("arguments", {}), result=result))
+                    messages.append({"role": "tool", "tool_call_id": tc["id"], "content": json.dumps(result)})
                 if resp.content:  # mock returns text + tool calls together -> turn is done
                     final_content = resp.content
                     break
@@ -128,8 +124,8 @@ def run_suite(
             scenario_runs.append(run_scenario(scenario, agent, judge, attempt=attempt))
 
     run = RunResult(
-        run_id=f"run_{datetime.now(timezone.utc):%Y%m%d_%H%M%S}_{uuid.uuid4().hex[:6]}",
-        created_at=datetime.now(timezone.utc).isoformat(),
+        run_id=f"run_{datetime.now(UTC):%Y%m%d_%H%M%S}_{uuid.uuid4().hex[:6]}",
+        created_at=datetime.now(UTC).isoformat(),
         agent_model=agent_model,
         judge_model=judge_model,
         scenario_runs=scenario_runs,

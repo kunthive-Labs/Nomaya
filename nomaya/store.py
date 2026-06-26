@@ -6,7 +6,6 @@ plus the full RunResult JSON blob so the API/dashboard can render any past run.
 
 from __future__ import annotations
 
-import json
 import sqlite3
 from pathlib import Path
 

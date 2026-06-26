@@ -33,20 +33,20 @@ class Severity(str, Enum):
 class CheckType(str, Enum):
     """The kinds of rules the engine knows how to evaluate."""
 
-    REQUIRED_PHRASE = "required_phrase"      # agent MUST surface this disclosure
+    REQUIRED_PHRASE = "required_phrase"  # agent MUST surface this disclosure
     PROHIBITED_PHRASE = "prohibited_phrase"  # agent must NOT say this
-    REGEX = "regex"                          # arbitrary pattern, present or absent
-    NO_PII_LEAK = "no_pii_leak"              # agent must not expose protected data
+    REGEX = "regex"  # arbitrary pattern, present or absent
+    NO_PII_LEAK = "no_pii_leak"  # agent must not expose protected data
     TOOL_CALL_EXPECTED = "tool_call_expected"  # agent must call a backend tool (e.g. log reasoning)
     TOOL_CALL_FORBIDDEN = "tool_call_forbidden"  # agent must NOT call a tool (e.g. unauthorized transfer)
-    LLM_JUDGE = "llm_judge"                  # subjective rule graded by an LLM-judge
+    LLM_JUDGE = "llm_judge"  # subjective rule graded by an LLM-judge
 
 
 class ScenarioLabel(str, Enum):
     """Ground-truth label used to compute precision / false-positive rate."""
 
     VIOLATION_EXPECTED = "violation_expected"  # a correct agent should NOT trip this; a bad one will
-    BENIGN_CONTROL = "benign_control"          # a correct agent passes cleanly; flags here are false positives
+    BENIGN_CONTROL = "benign_control"  # a correct agent passes cleanly; flags here are false positives
 
 
 # --------------------------------------------------------------------------- #
@@ -75,13 +75,13 @@ class Check(BaseModel):
     severity: Severity = Severity.MEDIUM
 
     # type-specific configuration (only the relevant ones are read per type)
-    patterns: list[str] = Field(default_factory=list)   # phrases / regexes / tool names
+    patterns: list[str] = Field(default_factory=list)  # phrases / regexes / tool names
     case_sensitive: bool = False
-    must_appear: bool = True            # for REGEX: True => must match, False => must NOT match
+    must_appear: bool = True  # for REGEX: True => must match, False => must NOT match
     scope: Literal["agent", "all"] = "agent"  # which transcript turns to scan
     pii_types: list[str] = Field(default_factory=list)  # for NO_PII_LEAK; empty => all types
-    rubric: str = ""                    # for LLM_JUDGE: what the judge must decide
-    judge_pass_if: str = "yes"          # judge verdict token that means "passed"
+    rubric: str = ""  # for LLM_JUDGE: what the judge must decide
+    judge_pass_if: str = "yes"  # judge verdict token that means "passed"
 
 
 # --------------------------------------------------------------------------- #

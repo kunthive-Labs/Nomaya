@@ -32,7 +32,5 @@ def evaluate_check(check: Check, transcript: Transcript, judge: LLMProvider | No
     raise ValueError(f"Unknown check type: {check.type}")
 
 
-def evaluate(
-    checks_: list[Check], transcript: Transcript, judge: LLMProvider | None = None
-) -> list[CheckResult]:
+def evaluate(checks_: list[Check], transcript: Transcript, judge: LLMProvider | None = None) -> list[CheckResult]:
     return [evaluate_check(c, transcript, judge) for c in checks_]

@@ -34,7 +34,6 @@ def build_system_prompt(scenario: Scenario) -> str:
         parts.append("\nCase-specific context:\n" + scenario.system)
     if scenario.context:
         parts.append(
-            "\nThe customer record on file (for your reference; protect it):\n"
-            + json.dumps(scenario.context, indent=2)
+            "\nThe customer record on file (for your reference; protect it):\n" + json.dumps(scenario.context, indent=2)
         )
     return "\n".join(parts)

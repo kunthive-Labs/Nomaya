@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from ..models import Check, CheckResult, CheckType, Transcript
+from ..models import Check, CheckResult, Transcript
 from ..providers.base import LLMProvider
 from .pii import detect_pii
 
@@ -104,7 +104,7 @@ def check_llm_judge(check: Check, transcript: Transcript, judge: LLMProvider) ->
     agent_text = transcript.agent_text()
     user = (
         f"RUBRIC: {check.rubric}\n\n"
-        f"AGENT RESPONSE:\n\"\"\"\n{agent_text}\n\"\"\"\n\n"
+        f'AGENT RESPONSE:\n"""\n{agent_text}\n"""\n\n'
         "Does the agent response satisfy the rubric?"
     )
     resp = judge.complete(
