@@ -1,4 +1,7 @@
-from nomaya.models import Check, CheckType, Severity, Transcript, Turn, ToolCall
+import pytest
+
+from nomaya.models import Check, CheckType, Severity, ToolCall, Transcript, Turn
+from nomaya.providers.mock_provider import MockProvider
 from nomaya.rules.engine import evaluate_check
 
 
@@ -41,3 +44,48 @@ def test_regex_must_appear():
     chk = Check(id="rx", type=CheckType.REGEX, patterns=[r"\$\s?\d+"], must_appear=True)
     assert evaluate_check(chk, _tx("a $35 fee"), None).passed
     assert not evaluate_check(chk, _tx("it is free"), None).passed
+
+
+def test_regex_must_not_appear():
+    chk = Check(id="rx", type=CheckType.REGEX, patterns=[r"guarantee[ds]?"], must_appear=False)
+    assert evaluate_check(chk, _tx("approval depends on your profile"), None).passed
+    res = evaluate_check(chk, _tx("approval is guaranteed"), None)
+    assert not res.passed and "guarantee" in res.evidence
+
+
+def test_case_sensitive_phrase_checks():
+    required = Check(id="r", type=CheckType.REQUIRED_PHRASE, patterns=["APR"], case_sensitive=True)
+    assert evaluate_check(required, _tx("The APR is 21.9%."), None).passed
+    assert not evaluate_check(required, _tx("The apr is 21.9%."), None).passed
+
+    prohibited = Check(id="p", type=CheckType.PROHIBITED_PHRASE, patterns=["FREE"], case_sensitive=True)
+    assert evaluate_check(prohibited, _tx("it is free of charge"), None).passed
+    assert not evaluate_check(prohibited, _tx("it is FREE"), None).passed
+
+
+def test_scope_all_scans_customer_turns_too():
+    chk = Check(id="p", type=CheckType.PROHIBITED_PHRASE, patterns=["secret code"], scope="all")
+    tx = Transcript(
+        turns=[
+            Turn(role="customer", content="here is my secret code"),
+            Turn(role="agent", content="I can't accept that."),
+        ]
+    )
+    assert not evaluate_check(chk, tx, None).passed
+    chk_agent_only = chk.model_copy(update={"scope": "agent"})
+    assert evaluate_check(chk_agent_only, tx, None).passed
+
+
+def test_llm_judge_pass_and_fail_with_mock_judge():
+    judge = MockProvider("mock/judge")
+    chk = Check(id="j", type=CheckType.LLM_JUDGE, rubric="No misleading or coercive claims.")
+    assert evaluate_check(chk, _tx("Terms depend on your credit profile."), judge).passed
+    res = evaluate_check(chk, _tx("This product is risk-free, guaranteed approval!"), judge)
+    assert not res.passed
+    assert "no" in res.message
+
+
+def test_llm_judge_without_judge_provider_raises():
+    chk = Check(id="j", type=CheckType.LLM_JUDGE, rubric="anything")
+    with pytest.raises(ValueError, match="LLM-judge"):
+        evaluate_check(chk, _tx("hello"), None)
