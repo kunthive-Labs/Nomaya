@@ -6,11 +6,11 @@ or emailed to a compliance reviewer without a server.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from jinja2 import Template
 
+from .config import REPORTS_DIR
 from .models import RunResult
 from .regulations import get_regulation
 
@@ -46,6 +46,8 @@ _HTML = Template(
       <div class="bar"><span style="width:{{ (m.pass_rate*100)|round(1) }}%"></span></div></div>
     <div class="card"><div class="k">Detection rate</div><div class="v">{{ (m.violation_detection_rate*100)|round(1) }}%</div></div>
     <div class="card"><div class="k">False positives</div><div class="v">{{ (m.false_positive_rate*100)|round(1) }}%</div></div>
+    <div class="card"><div class="k">Weighted score</div><div class="v">{{ (m.get('weighted_score', 1)*100)|round(1) }}%</div>
+      <div class="ev">violation weight {{ m.get('violation_weight', 0) }}/{{ m.get('possible_weight', 0) }}</div></div>
     <div class="card"><div class="k">Coverage</div><div class="v">{{ (m.compliance_coverage*100)|round(0) }}%</div>
       <div class="ev">{{ m.regulations_covered|length }}/{{ m.regulations_total }} regs</div></div>
     <div class="card"><div class="k">pass@k → reliability</div><div class="v">{{ (m.pass_all_k*100)|round(0) }}%</div>
@@ -87,8 +89,8 @@ def render_html(run: RunResult) -> str:
     )
 
 
-def write_reports(run: RunResult, out_dir: str | Path = "reports") -> dict[str, str]:
-    out = Path(out_dir)
+def write_reports(run: RunResult, out_dir: str | Path | None = None) -> dict[str, str]:
+    out = Path(out_dir) if out_dir is not None else REPORTS_DIR
     out.mkdir(parents=True, exist_ok=True)
     html_path = out / f"{run.run_id}.html"
     json_path = out / f"{run.run_id}.json"

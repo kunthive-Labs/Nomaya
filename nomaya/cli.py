@@ -1,26 +1,24 @@
 """Nomaya command-line interface.
 
-    nomaya run            # evaluate the suite against the configured agent
-    nomaya scenarios      # list available scenario playbooks
-    nomaya regulations    # list the regulation registry
-    nomaya list           # list past runs
-    nomaya show <run_id>  # show metrics for a run
-    nomaya serve          # start the dashboard API
+nomaya run            # evaluate the suite against the configured agent
+nomaya scenarios      # list available scenario playbooks
+nomaya regulations    # list the regulation registry
+nomaya list           # list past runs
+nomaya show <run_id>  # show metrics for a run
+nomaya serve          # start the dashboard API
 """
 
 from __future__ import annotations
-
-import sys
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
+from . import store
 from .config import settings
 from .orchestrator import run_suite
 from .report import write_reports
 from .scenarios import load_scenarios
-from . import store
 
 app = typer.Typer(add_completion=False, help="Nomaya — finance compliance agent evaluation suite.")
 console = Console()
@@ -34,8 +32,9 @@ def run(
     tags: str = typer.Option(None, help="Comma-separated tag filter."),
     report: bool = typer.Option(True, help="Write HTML + JSON reports."),
     save: bool = typer.Option(True, help="Persist the run to the SQLite history."),
-    fail_under: float = typer.Option(
-        0.0, help="Exit non-zero if pass rate is below this (for CI gating)."
+    fail_under: float = typer.Option(0.0, help="Exit non-zero if pass rate is below this (for CI gating)."),
+    fail_under_weighted: float = typer.Option(
+        0.0, help="Exit non-zero if the severity-weighted compliance score is below this."
     ),
 ):
     """Evaluate the scenario suite against an agent."""
@@ -49,7 +48,8 @@ def run(
         raise typer.Exit(1)
 
     console.print(
-        f"Running [bold]{len(scenarios)}[/bold] scenarios × k={k} · agent=[cyan]{agent}[/cyan] judge=[cyan]{judge}[/cyan]"
+        f"Running [bold]{len(scenarios)}[/bold] scenarios × k={k} "
+        f"· agent=[cyan]{agent}[/cyan] judge=[cyan]{judge}[/cyan]"
     )
     result = run_suite(scenarios, agent_model=agent, judge_model=judge, k=k)
     m = result.metrics
@@ -57,7 +57,9 @@ def run(
     _metrics_table(m)
 
     table = Table(title="Scenario results", show_lines=False)
-    table.add_column("Scenario"); table.add_column("Label"); table.add_column("Result")
+    table.add_column("Scenario")
+    table.add_column("Label")
+    table.add_column("Result")
     table.add_column("Failed checks")
     for s in result.scenario_runs:
         failed = ", ".join(c.check_id for c in s.violations) or "—"
@@ -75,19 +77,30 @@ def run(
     if fail_under and m.get("pass_rate", 0) < fail_under:
         console.print(f"[red]Pass rate {m['pass_rate']:.2%} < gate {fail_under:.2%}[/red]")
         raise typer.Exit(1)
+    if fail_under_weighted and m.get("weighted_score", 0) < fail_under_weighted:
+        console.print(f"[red]Weighted score {m['weighted_score']:.2%} < gate {fail_under_weighted:.2%}[/red]")
+        raise typer.Exit(1)
 
 
 def _metrics_table(m: dict) -> None:
     t = Table(title="Metrics")
-    t.add_column("Metric"); t.add_column("Value", justify="right")
+    t.add_column("Metric")
+    t.add_column("Value", justify="right")
     t.add_row("Pass rate", f"{m.get('pass_rate', 0):.1%}")
     t.add_row("Violation detection rate", f"{m.get('violation_detection_rate', 0):.1%}")
     t.add_row("False-positive rate", f"{m.get('false_positive_rate', 0):.1%}")
-    t.add_row("Compliance coverage", f"{m.get('compliance_coverage', 0):.0%} "
-              f"({len(m.get('regulations_covered', []))}/{m.get('regulations_total', 0)})")
+    t.add_row(
+        "Compliance coverage",
+        f"{m.get('compliance_coverage', 0):.0%} "
+        f"({len(m.get('regulations_covered', []))}/{m.get('regulations_total', 0)})",
+    )
     t.add_row("pass@1 / pass@k", f"{m.get('pass_at_1', 0):.0%} / {m.get('pass_all_k', 0):.0%}")
     t.add_row("Reliability drop", f"{m.get('reliability_drop', 0):.0%}")
     t.add_row("Total violations", str(m.get("total_violations", 0)))
+    t.add_row(
+        "Weighted score",
+        f"{m.get('weighted_score', 1):.1%} (weight {m.get('violation_weight', 0)}/{m.get('possible_weight', 0)})",
+    )
     t.add_row("Cost / run", f"${m.get('cost_usd_per_run', 0):.4f}")
     t.add_row("Throughput", f"{m.get('throughput_runs_per_sec', 0)} runs/s")
     console.print(t)
@@ -97,7 +110,10 @@ def _metrics_table(m: dict) -> None:
 def scenarios():
     """List available scenario playbooks."""
     t = Table(title="Scenarios")
-    t.add_column("ID"); t.add_column("Title"); t.add_column("Label"); t.add_column("Regulations")
+    t.add_column("ID")
+    t.add_column("Title")
+    t.add_column("Label")
+    t.add_column("Regulations")
     for s in load_scenarios():
         t.add_row(s.id, s.title, s.label.value, ", ".join(s.regulations))
     console.print(t)
@@ -109,7 +125,9 @@ def regulations():
     from .regulations import load_registry
 
     t = Table(title="Regulation registry")
-    t.add_column("ID"); t.add_column("Name"); t.add_column("Authority")
+    t.add_column("ID")
+    t.add_column("Name")
+    t.add_column("Authority")
     for reg in load_registry().values():
         t.add_row(reg.id, reg.name, reg.authority)
     console.print(t)
@@ -123,8 +141,11 @@ def list_runs(limit: int = 20):
         console.print("No runs yet. Try [bold]nomaya run[/bold].")
         return
     t = Table(title="Run history")
-    t.add_column("Run ID"); t.add_column("When"); t.add_column("Agent")
-    t.add_column("Pass rate", justify="right"); t.add_column("Violations", justify="right")
+    t.add_column("Run ID")
+    t.add_column("When")
+    t.add_column("Agent")
+    t.add_column("Pass rate", justify="right")
+    t.add_column("Violations", justify="right")
     for r in rows:
         pr = f"{r['pass_rate']:.0%}" if r["pass_rate"] is not None else "—"
         t.add_row(r["run_id"], r["created_at"][:19], r["agent_model"], pr, str(r["violations"]))
