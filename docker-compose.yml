@@ -1,0 +1,25 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - nomaya-data:/data
+    environment:
+      NOMAYA_API_TOKEN: ${NOMAYA_API_TOKEN:-}
+      NOMAYA_ALLOWED_MODELS: ${NOMAYA_ALLOWED_MODELS:-mock/compliant-agent,mock/naive-agent,mock/judge}
+    # Uncomment to pass provider keys (OPENAI_API_KEY, ...) from a local .env:
+    # env_file: .env
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      NOMAYA_API_URL: http://api:8000
+      NOMAYA_API_TOKEN: ${NOMAYA_API_TOKEN:-}
+    depends_on:
+      - api
+
+volumes:
+  nomaya-data:
