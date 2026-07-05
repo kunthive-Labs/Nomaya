@@ -113,6 +113,8 @@ def _metrics_table(m: dict) -> None:
         "Weighted score",
         f"{m.get('weighted_score', 1):.1%} (weight {m.get('violation_weight', 0)}/{m.get('possible_weight', 0)})",
     )
+    t.add_row("p50 Latency", f"{m.get('p50_latency_ms', 0):.1f} ms")
+    t.add_row("p90 Latency", f"{m.get('p90_latency_ms', 0):.1f} ms")
     t.add_row("Cost / run", f"${m.get('cost_usd_per_run', 0):.4f}")
     t.add_row("Throughput", f"{m.get('throughput_runs_per_sec', 0)} runs/s")
     console.print(t)
