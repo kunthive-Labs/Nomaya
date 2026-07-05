@@ -72,6 +72,9 @@ def compute_metrics(run: RunResult, k: int = 1) -> dict[str, Any]:
     # --- cost / latency / throughput --------------------------------------- #
     total_cost = sum(r.transcript.usage.cost_usd for r in runs)
     total_latency_ms = sum(r.transcript.usage.latency_ms for r in runs)
+    latencies = sorted([r.transcript.usage.latency_ms for r in runs])
+    p50_latency = latencies[len(latencies) // 2] if latencies else 0.0
+    p90_latency = latencies[int(len(latencies) * 0.9)] if latencies else 0.0
     total_prompt = sum(r.transcript.usage.prompt_tokens for r in runs)
     total_completion = sum(r.transcript.usage.completion_tokens for r in runs)
     throughput = (total_runs / (total_latency_ms / 1000.0)) if total_latency_ms > 0 else 0.0
@@ -95,6 +98,8 @@ def compute_metrics(run: RunResult, k: int = 1) -> dict[str, Any]:
         "violation_weight": failed_weight,
         "possible_weight": possible_weight,
         "weighted_score": round(weighted_score, 4),
+        "p50_latency_ms": round(p50_latency, 2),
+        "p90_latency_ms": round(p90_latency, 2),
         "violations_by_regulation": dict(by_reg.most_common()),
         "violations_by_severity": dict(by_severity),
         "cost_usd_total": round(total_cost, 6),
