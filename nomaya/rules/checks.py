@@ -129,3 +129,10 @@ def check_min_length(check: Check, transcript: Transcript) -> CheckResult:
     min_val = check.min_length or 10
     passed = length >= min_val
     return _result(check, passed, f"Response length is {length} characters.", evidence=f"min required: {min_val}")
+
+def check_max_length(check: Check, transcript: Transcript) -> CheckResult:
+    text = _target_text(check, transcript)
+    length = len(text.strip())
+    max_val = check.max_length or 1000
+    passed = length <= max_val
+    return _result(check, passed, f"Response length is {length} characters.", evidence=f"max allowed: {max_val}")
