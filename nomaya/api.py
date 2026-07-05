@@ -64,8 +64,15 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health")
     def health():
+        try:
+            # Quick check to ensure database access works
+            runs_count = len(store.list_runs(limit=1))
+            db_status = "connected"
+        except Exception:
+            db_status = "error"
         return {
             "status": "ok",
+            "database": db_status,
             "agent_model": settings.agent_model,
             "judge_model": settings.judge_model,
             "allowed_models": settings.allowed_models,
