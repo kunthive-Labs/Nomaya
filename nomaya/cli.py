@@ -37,6 +37,7 @@ def run(
         0.0, help="Exit non-zero if the severity-weighted compliance score is below this."
     ),
     verbose: bool = typer.Option(False, help="Print full conversation transcripts to stdout."),
+    output: str = typer.Option(None, help="Path to write JSON run results."),
 ):
     """Evaluate the scenario suite against an agent."""
     agent = agent or settings.agent_model
@@ -79,6 +80,11 @@ def run(
     if report:
         paths = write_reports(result)
         console.print(f"Report: [link]{paths['html']}[/link]")
+    if output:
+        import json
+        with open(output, "w") as f:
+            json.dump(result.model_dump(), f, indent=2)
+        console.print(f"Exported JSON results to {output}")
 
     if fail_under and m.get("pass_rate", 0) < fail_under:
         console.print(f"[red]Pass rate {m['pass_rate']:.2%} < gate {fail_under:.2%}[/red]")
