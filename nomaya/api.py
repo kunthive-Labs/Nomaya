@@ -89,8 +89,18 @@ def create_app() -> FastAPI:
         return [s.model_dump() for s in load_scenarios()]
 
     @router.get("/api/runs")
-    def runs(limit: int = Query(50, ge=1, le=200)):
-        return store.list_runs(limit=limit)
+    def runs(limit: int = Query(50, ge=1, le=200), tag: str | None = None):
+        all_runs = store.list_runs(limit=limit)
+        if tag:
+            filtered = []
+            for r in all_runs:
+                payload = store.get_run(r["run_id"])
+                if payload:
+                    has_tag = any(tag in (sr.tags or []) for sr in payload.scenario_runs)
+                    if has_tag:
+                        filtered.append(r)
+            return filtered
+        return all_runs
 
     @router.get("/api/runs/latest")
     def latest():
