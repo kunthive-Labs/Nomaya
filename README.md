@@ -85,6 +85,7 @@ Copy `.env.example` to `.env`. Besides provider keys, the notable variables:
 | `NOMAYA_API_TOKEN` | *(empty — auth off)* | Bearer token for every API route except `/api/health`. |
 | `NOMAYA_ALLOWED_MODELS` | mock models only | Models `POST /api/run` may target; `*` allows any. Protects against strangers burning your provider credits. |
 | `NOMAYA_CORS_ORIGINS` | localhost:3000 | Browser origins allowed by CORS (direct mode only). |
+| `NOMAYA_DB_TIMEOUT` | `5.0` | SQLite database connection timeout in seconds. |
 
 ## What it measures
 
