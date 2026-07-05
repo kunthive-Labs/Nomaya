@@ -48,6 +48,10 @@ class Settings:
         return os.environ.get("NOMAYA_DB_PATH", str(ROOT / "nomaya.sqlite3"))
 
     @property
+    def db_timeout(self) -> float:
+        return float(os.environ.get("NOMAYA_DB_TIMEOUT", "5.0"))
+
+    @property
     def api_token(self) -> str:
         """Bearer token for the API. Empty (the default) disables auth for local dev."""
         return os.environ.get("NOMAYA_API_TOKEN", "")

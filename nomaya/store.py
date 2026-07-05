@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS runs (
 def _connect(db_path: str | None = None) -> sqlite3.Connection:
     path = db_path or settings.db_path
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path, timeout=getattr(settings, "db_timeout", 5.0))
     conn.row_factory = sqlite3.Row
     conn.execute(_SCHEMA)
     return conn
