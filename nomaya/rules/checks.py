@@ -142,3 +142,15 @@ def check_max_latency(check: Check, transcript: Transcript) -> CheckResult:
     max_lat = check.max_latency_ms or 5000.0
     passed = lat <= max_lat
     return _result(check, passed, f"Total latency is {lat:.1f}ms.", evidence=f"max allowed: {max_lat:.1f}ms")
+
+def check_json_valid(check: Check, transcript: Transcript) -> CheckResult:
+    text = _target_text(check, transcript).strip()
+    try:
+        import json
+        json.loads(text)
+        passed = True
+        msg = "Valid JSON response."
+    except Exception as e:
+        passed = False
+        msg = f"Invalid JSON response: {str(e)}"
+    return _result(check, passed, msg)
