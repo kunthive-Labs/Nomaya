@@ -108,3 +108,9 @@ def test_max_latency_check():
     assert evaluate_check(chk, tx, None).passed
     tx_bad = Transcript(turns=[], usage=Usage(latency_ms=150.0))
     assert not evaluate_check(chk, tx_bad, None).passed
+
+
+def test_json_valid_check():
+    chk = Check(id="jv", type=CheckType.JSON_VALID)
+    assert evaluate_check(chk, _tx('{"status": "ok"}'), None).passed
+    assert not evaluate_check(chk, _tx("not json"), None).passed
