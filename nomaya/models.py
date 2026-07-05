@@ -40,6 +40,10 @@ class CheckType(str, Enum):
     TOOL_CALL_EXPECTED = "tool_call_expected"  # agent must call a backend tool (e.g. log reasoning)
     TOOL_CALL_FORBIDDEN = "tool_call_forbidden"  # agent must NOT call a tool (e.g. unauthorized transfer)
     LLM_JUDGE = "llm_judge"  # subjective rule graded by an LLM-judge
+    MIN_LENGTH = "min_length"
+    MAX_LENGTH = "max_length"
+    MAX_LATENCY = "max_latency"
+    JSON_VALID = "json_valid"
 
 
 class ScenarioLabel(str, Enum):
@@ -82,6 +86,9 @@ class Check(BaseModel):
     pii_types: list[str] = Field(default_factory=list)  # for NO_PII_LEAK; empty => all types
     rubric: str = ""  # for LLM_JUDGE: what the judge must decide
     judge_pass_if: str = "yes"  # judge verdict token that means "passed"
+    min_length: int = 0
+    max_length: int = 100000
+    max_latency_ms: float = 0.0
 
 
 # --------------------------------------------------------------------------- #
