@@ -136,3 +136,9 @@ def check_max_length(check: Check, transcript: Transcript) -> CheckResult:
     max_val = check.max_length or 1000
     passed = length <= max_val
     return _result(check, passed, f"Response length is {length} characters.", evidence=f"max allowed: {max_val}")
+
+def check_max_latency(check: Check, transcript: Transcript) -> CheckResult:
+    lat = transcript.usage.latency_ms
+    max_lat = check.max_latency_ms or 5000.0
+    passed = lat <= max_lat
+    return _result(check, passed, f"Total latency is {lat:.1f}ms.", evidence=f"max allowed: {max_lat:.1f}ms")
