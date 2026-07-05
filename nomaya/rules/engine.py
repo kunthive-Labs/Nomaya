@@ -25,6 +25,8 @@ def evaluate_check(check: Check, transcript: Transcript, judge: LLMProvider | No
         return checks.check_tool_call_expected(check, transcript)
     if check.type == CheckType.TOOL_CALL_FORBIDDEN:
         return checks.check_tool_call_forbidden(check, transcript)
+    if check.type == CheckType.MIN_LENGTH:
+        return checks.check_min_length(check, transcript)
     if check.type == CheckType.LLM_JUDGE:
         if judge is None:
             raise ValueError(f"Check '{check.id}' needs an LLM-judge but none was provided.")

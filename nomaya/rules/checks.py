@@ -122,3 +122,10 @@ def check_llm_judge(check: Check, transcript: Transcript, judge: LLMProvider) ->
         f"LLM-judge verdict: {verdict or 'unparsed'}.",
         evidence=reason.strip(),
     )
+
+def check_min_length(check: Check, transcript: Transcript) -> CheckResult:
+    text = _target_text(check, transcript)
+    length = len(text.strip())
+    min_val = check.min_length or 10
+    passed = length >= min_val
+    return _result(check, passed, f"Response length is {length} characters.", evidence=f"min required: {min_val}")
