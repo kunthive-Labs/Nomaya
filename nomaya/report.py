@@ -37,6 +37,13 @@ _HTML = Template(
   .ev { color:var(--mut); font-size:12px; } h2 { font-size:16px; margin:32px 0 10px; }
   .bar { height:8px; background:#eef1f4; border-radius:999px; overflow:hidden; }
   .bar > span { display:block; height:100%; background:var(--ok); }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink:#f7f8fa; --mut:#9ca3af; --line:#374151; --bg:#111827; }
+    .card, table { background:#1f2937; }
+    th { background:#111827; }
+    .pill { background:#374151; color:#f7f8fa; }
+    .pill.fail { background:#7f1d1d; color:#fecaca; }
+  }
 </style></head><body><div class="wrap">
   <h1>Nomaya — Finance Compliance Agent Evaluation</h1>
   <p class="sub">Run <b>{{ run.run_id }}</b> · agent <b>{{ run.agent_model }}</b> · judge <b>{{ run.judge_model }}</b> · {{ run.created_at }}</p>
