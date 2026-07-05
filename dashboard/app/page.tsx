@@ -22,6 +22,7 @@ export default function Page() {
   const [k, setK] = useState(1);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   function refreshHistory() {
     listRuns().then(setHistory).catch(() => setHistory([]));
@@ -119,13 +120,16 @@ export default function Page() {
           )}
 
           <h2>Scenario results</h2>
+          <div className="toolbar" style={{marginBottom: 12}}>
+            <input type="text" placeholder="Search scenarios..." value={search} onChange={e => setSearch(e.target.value)} style={{padding: "6px 12px", borderRadius: 6, border: "1px solid var(--line)", width: "100%"}} />
+          </div>
           <div className="panel scroll">
             <table>
               <thead>
                 <tr><th>Scenario</th><th>Label</th><th>Result</th><th>Checks</th></tr>
               </thead>
               <tbody>
-                {run.scenario_runs.map((s, i) => (
+                {run.scenario_runs.filter(s => s.title.toLowerCase().includes(search.toLowerCase()) || s.scenario_id.toLowerCase().includes(search.toLowerCase())).map((s, i) => (
                   <tr key={`${s.scenario_id}-${i}`}>
                     <td>
                       <div>{s.title}</div>
