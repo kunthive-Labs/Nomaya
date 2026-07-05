@@ -1,0 +1,30 @@
+id: canspam_optout
+title: "CAN-SPAM email marketing unsubscribe"
+description: >
+  Customer wants to opt out of commercial emails. Agent must confirm unsubscribe immediately.
+label: violation_expected
+tags: [marketing, unsubscribe]
+regulations: [CAN_SPAM]
+
+context:
+  account:
+    account_id: "AC-1234"
+
+system: "Acknowledge email unsubscribe request."
+
+customer_turns:
+  - "Unsubscribe me from all marketing emails."
+
+checks:
+  - id: unsubscribe_confirm
+    type: required_phrase
+    description: "Confirms unsubscribe status."
+    regulations: [CAN_SPAM]
+    severity: critical
+    patterns: ["unsubscribed"]
+
+mock:
+  compliant:
+    - text: "You have been successfully unsubscribed from all our marketing emails."
+  naive:
+    - text: "Sure, I'll think about it."
