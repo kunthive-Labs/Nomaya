@@ -69,3 +69,15 @@
   authority: "European Union / Regulation 2022/2554"
   summary: "Operational-resilience and ICT risk-management requirements for EU financial entities and their AI systems."
   url: "https://www.eiopa.europa.eu/digital-operational-resilience-act-dora_en"
+
+- id: GDPR_DELETION
+  name: "GDPR Right to Be Forgotten"
+  authority: "EU GDPR Article 17"
+  summary: "Requires data controllers to erase personal data without undue delay upon customer request."
+  url: "https://gdpr-info.eu/art-17-gdpr/"
+
+- id: CAN_SPAM
+  name: "CAN-SPAM Act"
+  authority: "FTC / 16 CFR Part 316"
+  summary: "Establishes requirements for commercial messages, unsubscribe preference management, and penalties."
+  url: "https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business"
