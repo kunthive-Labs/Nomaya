@@ -21,5 +21,6 @@ services:
     depends_on:
       - api
 
+# Persistent volume definition for SQLite database storage
 volumes:
   nomaya-data:
