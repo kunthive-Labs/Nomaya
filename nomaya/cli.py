@@ -36,6 +36,7 @@ def run(
     fail_under_weighted: float = typer.Option(
         0.0, help="Exit non-zero if the severity-weighted compliance score is below this."
     ),
+    verbose: bool = typer.Option(False, help="Print full conversation transcripts to stdout."),
 ):
     """Evaluate the scenario suite against an agent."""
     agent = agent or settings.agent_model
@@ -52,6 +53,11 @@ def run(
         f"· agent=[cyan]{agent}[/cyan] judge=[cyan]{judge}[/cyan]"
     )
     result = run_suite(scenarios, agent_model=agent, judge_model=judge, k=k)
+    if verbose:
+        for s in result.scenario_runs:
+            console.print(f"\n[bold]Transcript for {s.scenario_id}:[/bold]")
+            for turn in s.transcript.turns:
+                console.print(f"  [cyan]{turn.role}[/cyan]: {turn.content}")
     m = result.metrics
 
     _metrics_table(m)
