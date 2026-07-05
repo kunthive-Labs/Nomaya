@@ -89,3 +89,22 @@ def test_llm_judge_without_judge_provider_raises():
     chk = Check(id="j", type=CheckType.LLM_JUDGE, rubric="anything")
     with pytest.raises(ValueError, match="LLM-judge"):
         evaluate_check(chk, _tx("hello"), None)
+
+
+def test_min_length_check():
+    chk = Check(id="min_len", type=CheckType.MIN_LENGTH, min_length=20)
+    assert evaluate_check(chk, _tx("this response is definitely long enough"), None).passed
+    assert not evaluate_check(chk, _tx("short"), None).passed
+
+def test_max_length_check():
+    chk = Check(id="max_len", type=CheckType.MAX_LENGTH, max_length=10)
+    assert evaluate_check(chk, _tx("short"), None).passed
+    assert not evaluate_check(chk, _tx("this is way too long"), None).passed
+
+def test_max_latency_check():
+    from nomaya.models import Usage
+    chk = Check(id="lat", type=CheckType.MAX_LATENCY, max_latency_ms=100.0)
+    tx = Transcript(turns=[], usage=Usage(latency_ms=50.0))
+    assert evaluate_check(chk, tx, None).passed
+    tx_bad = Transcript(turns=[], usage=Usage(latency_ms=150.0))
+    assert not evaluate_check(chk, tx_bad, None).passed
