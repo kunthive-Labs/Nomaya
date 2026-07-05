@@ -92,11 +92,12 @@ def create_app() -> FastAPI:
     def runs(limit: int = Query(50, ge=1, le=200), tag: str | None = None):
         all_runs = store.list_runs(limit=limit)
         if tag:
+            scenarios = {s.id: s.tags for s in load_scenarios()}
             filtered = []
             for r in all_runs:
                 payload = store.get_run(r["run_id"])
                 if payload:
-                    has_tag = any(tag in (sr.tags or []) for sr in payload.scenario_runs)
+                    has_tag = any(tag in scenarios.get(sr.scenario_id, []) for sr in payload.scenario_runs)
                     if has_tag:
                         filtered.append(r)
             return filtered

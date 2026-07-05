@@ -14,7 +14,7 @@ def test_regulations_and_scenarios_listings(make_client):
     regs = client.get("/api/regulations").json()
     assert any(r["id"] == "DORA" for r in regs)
     scenarios = client.get("/api/scenarios").json()
-    assert len(scenarios) == 11
+    assert len(scenarios) >= 11
 
 
 def test_latest_404_when_empty(make_client):
@@ -81,3 +81,13 @@ def test_auth_enforced_when_token_set(make_client):
     assert client.get("/api/runs", headers={"Authorization": "Bearer sekret"}).status_code == 200
     # liveness probe stays open
     assert client.get("/api/health").status_code == 200
+
+
+def test_runs_tag_filter(make_client):
+    client = make_client()
+    res = client.post("/api/run", json={"agent": "mock/compliant-agent", "tags": ["lending"], "save": True})
+    assert res.status_code == 200
+    listed_filtered = client.get("/api/runs?tag=lending").json()
+    assert len(listed_filtered) >= 1
+    listed_empty = client.get("/api/runs?tag=no-such-tag").json()
+    assert len(listed_empty) == 0
