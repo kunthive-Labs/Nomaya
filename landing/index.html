@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nomaya - compliance evals for AI agents in finance | Kunthive Labs</title>
+  <meta name="description" content="Nomaya is a provider-agnostic compliance evaluation suite for AI agents in financial services. Regulation-mapped scenarios, declarative checks, and honest metrics. Free and open source, by Kunthive Labs." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Nomaya - compliance evals for AI agents in finance" />
+  <meta property="og:description" content="A provider-agnostic compliance evaluation suite for AI agents in financial services. Regulation-mapped scenarios test agent behavior against named legal obligations, with any provider's model." />
+  <meta property="og:url" content="https://kunthive-labs.github.io/Nomaya/" />
+  <meta name="theme-color" content="#050505" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #050505;
+      --text: #ffffff;
+      --text-2: #a1a1aa;
+      --muted: #52525b;
+      --soft: #71717a;
+      --line: rgba(255, 255, 255, 0.06);
+      --line-strong: rgba(255, 255, 255, 0.12);
+      --panel: #0a0a0a;
+      --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+      --maxw: 1180px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; color-scheme: dark; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    ::selection { background: #fff; color: #000; }
+    a { color: inherit; text-decoration: none; }
+    img, svg { display: block; max-width: 100%; }
+
+    .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+    /* ---------- header ---------- */
+    header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      background: rgba(5, 5, 5, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .nav-brand { display: flex; align-items: baseline; gap: 10px; }
+    .nav-brand .org { font-size: 13px; color: var(--soft); font-weight: 500; }
+    .nav-brand .proj { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+    .nav-links { display: flex; align-items: center; gap: 28px; }
+    .nav-links a { font-size: 13.5px; color: var(--text-2); transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-links .btn-sm {
+      color: #000; background: #fff; padding: 7px 14px; border-radius: 6px;
+      font-weight: 600; transition: opacity 0.2s;
+    }
+    .nav-links .btn-sm:hover { opacity: 0.85; color: #000; }
+
+    /* ---------- hero ---------- */
+    .hero { padding: 150px 0 90px; border-bottom: 1px solid var(--line); }
+    .hero-label {
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--soft); margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-size: clamp(42px, 7.5vw, 84px);
+      line-height: 0.98;
+      letter-spacing: -0.04em;
+      font-weight: 700;
+      max-width: 12ch;
+    }
+    .hero h1 .dim { color: var(--muted); }
+    .hero p {
+      margin-top: 28px; font-size: 18px; color: var(--text-2);
+      max-width: 52ch; line-height: 1.65;
+    }
+    .hero-ctas { margin-top: 40px; display: flex; gap: 14px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 22px; border-radius: 7px; font-size: 14.5px; font-weight: 600;
+      transition: transform 0.15s, opacity 0.2s, border-color 0.2s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: #fff; color: #000; }
+    .btn-primary:hover { opacity: 0.87; }
+    .btn-ghost { border: 1px solid var(--line-strong); color: var(--text); }
+    .btn-ghost:hover { border-color: rgba(255, 255, 255, 0.3); }
+
+    /* ---------- sections ---------- */
+    section { padding: 96px 0; border-bottom: 1px solid var(--line); }
+    .sec-title {
+      font-size: clamp(28px, 4vw, 44px); font-weight: 700;
+      letter-spacing: -0.03em; line-height: 1.1; max-width: 22ch;
+    }
+    .sec-body { margin-top: 22px; font-size: 16.5px; color: var(--text-2); max-width: 62ch; }
+    .sec-body + .sec-body { margin-top: 16px; }
+    .sec-body strong { color: var(--text); font-weight: 600; }
+
+    /* ---------- diagram panel (Kunthive schematic motif) ---------- */
+    .dgm-panel {
+      position: relative; margin-top: 56px;
+      border: 1px solid var(--line); border-radius: 10px;
+      background:
+        radial-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+      background-size: 26px 26px;
+      background-color: var(--panel);
+      padding: 48px 32px;
+      overflow: hidden;
+    }
+    .dgm-corner { position: absolute; width: 14px; height: 14px; border-color: rgba(255,255,255,0.25); border-style: solid; border-width: 0; }
+    .dgm-corner.tl { top: 10px; left: 10px; border-top-width: 1px; border-left-width: 1px; }
+    .dgm-corner.tr { top: 10px; right: 10px; border-top-width: 1px; border-right-width: 1px; }
+    .dgm-corner.bl { bottom: 10px; left: 10px; border-bottom-width: 1px; border-left-width: 1px; }
+    .dgm-corner.br { bottom: 10px; right: 10px; border-bottom-width: 1px; border-right-width: 1px; }
+    .dgm-caption {
+      font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 34px; text-align: center;
+    }
+    .dgm-svg { width: 100%; height: auto; }
+    .dgm-svg text { font-family: var(--mono); }
+    .dgm-node { fill: rgba(255, 255, 255, 0.03); stroke: rgba(255, 255, 255, 0.22); }
+    .dgm-node-label { fill: #fafafa; font-size: 12px; font-weight: 500; }
+    .dgm-node-sub { fill: #71717a; font-size: 9.5px; }
+    .dgm-wire { stroke: rgba(255, 255, 255, 0.3); stroke-dasharray: 5 5; fill: none; }
+    @media (prefers-reduced-motion: no-preference) {
+      .dgm-wire { animation: dash 1.6s linear infinite; }
+    }
+    @keyframes dash { to { stroke-dashoffset: -20; } }
+
+    /* ---------- feature rows ---------- */
+    .feat-grid { margin-top: 56px; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
+    .feat {
+      padding: 36px 32px 40px; border-bottom: 1px solid var(--line);
+    }
+    .feat:nth-child(odd) { border-right: 1px solid var(--line); padding-left: 0; }
+    .feat:nth-child(even) { padding-right: 0; }
+    .feat h3 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+    .feat p { margin-top: 10px; font-size: 14.5px; color: var(--text-2); line-height: 1.65; }
+    .feat .num { font-family: var(--mono); font-size: 11px; color: var(--muted); display: block; margin-bottom: 14px; }
+
+    /* ---------- stat strip ---------- */
+    .score-strip { margin-top: 56px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    .score-cell { background: var(--panel); padding: 26px 20px; }
+    .score-cell .val { font-family: var(--mono); font-size: 30px; font-weight: 500; letter-spacing: -0.02em; }
+    .score-cell .lbl { margin-top: 8px; font-size: 12.5px; color: var(--soft); line-height: 1.45; }
+
+    /* ---------- terminal ---------- */
+    .term {
+      margin-top: 56px; border: 1px solid var(--line); border-radius: 10px;
+      background: var(--panel); overflow: hidden;
+    }
+    .term-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 18px; border-bottom: 1px solid var(--line);
+      font-family: var(--mono); font-size: 11px; color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+    .term-body { padding: 24px 22px; font-family: var(--mono); font-size: 13.5px; line-height: 2.05; overflow-x: auto; }
+    .term-body .c { color: var(--muted); }
+    .term-body .p { color: var(--soft); user-select: none; }
+    .term-body code { font-family: inherit; color: #e4e4e7; white-space: pre; }
+
+    /* ---------- caveat note ---------- */
+    .note {
+      margin-top: 48px; max-width: 62ch;
+      border: 1px solid var(--line-strong); border-radius: 10px;
+      padding: 22px 26px;
+      font-size: 14px; color: var(--text-2); line-height: 1.65;
+    }
+    .note strong { color: var(--text); font-weight: 600; }
+
+    .facts {
+      margin-top: 72px; padding-top: 28px; border-top: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 16px 48px;
+      font-family: var(--mono); font-size: 12px; color: var(--soft); letter-spacing: 0.04em;
+    }
+    .facts span strong { color: var(--text-2); font-weight: 500; }
+
+    /* ---------- footer ---------- */
+    footer { padding: 64px 0 48px; }
+    .foot-grid { display: flex; justify-content: space-between; gap: 48px; flex-wrap: wrap; }
+    .foot-brand .name { font-weight: 600; font-size: 15px; }
+    .foot-brand p { margin-top: 10px; font-size: 13.5px; color: var(--soft); max-width: 34ch; }
+    .foot-col h4 {
+      font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 16px; font-weight: 500;
+    }
+    .foot-col ul { list-style: none; }
+    .foot-col li { margin-bottom: 10px; }
+    .foot-col a { font-size: 13.5px; color: var(--text-2); transition: color 0.2s; }
+    .foot-col a:hover { color: var(--text); }
+    .foot-bottom {
+      margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+      font-size: 12.5px; color: var(--muted);
+    }
+
+    /* ---------- reveal motion ---------- */
+    @media (prefers-reduced-motion: no-preference) {
+      .rv { opacity: 0; transform: translateY(18px); transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+      .rv.in { opacity: 1; transform: none; }
+      .hero .rv { transition-delay: 0.05s; }
+    }
+
+    /* ---------- mobile ---------- */
+    @media (max-width: 860px) {
+      .hero { padding: 130px 0 70px; }
+      section { padding: 72px 0; }
+      .feat-grid { grid-template-columns: 1fr; }
+      .feat:nth-child(odd) { border-right: 0; }
+      .feat { padding-left: 0 !important; padding-right: 0 !important; }
+      .score-strip { grid-template-columns: 1fr 1fr; }
+      .nav-links a:not(.btn-sm) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="wrap nav">
+      <a class="nav-brand" href="https://labs.kunthive.in">
+        <span class="org">Kunthive Labs /</span>
+        <span class="proj">Nomaya</span>
+      </a>
+      <nav class="nav-links">
+        <a href="#why">Why</a>
+        <a href="#how">How it works</a>
+        <a href="#start">Quickstart</a>
+        <a class="btn-sm" href="https://github.com/kunthive-Labs/Nomaya">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div class="wrap">
+        <p class="hero-label rv">Open source by Kunthive Labs</p>
+        <h1 class="rv">Prove the agent complies. <span class="dim">Before production does.</span></h1>
+        <p class="rv">Regulation-mapped scenarios that test AI customer-service agents against named legal obligations, with any provider's model.</p>
+        <div class="hero-ctas rv">
+          <a class="btn btn-primary" href="https://github.com/kunthive-Labs/Nomaya">View on GitHub</a>
+          <a class="btn btn-ghost" href="#start">Run the suite</a>
+        </div>
+      </div>
+    </div>
+
+    <section id="why">
+      <div class="wrap">
+        <h2 class="sec-title rv">Generic evals miss the failures that regulators fine.</h2>
+        <p class="sec-body rv">The high-stakes failures in regulated finance are subtle: leaking nonpublic personal information, omitting a required Truth-in-Lending disclosure, a UDAAP-deceptive statement about fees, acting on a transfer without authorization. A benchmark score says nothing about any of them.</p>
+        <p class="sec-body rv">Nomaya runs an agent through regulation-mapped scenarios in a sandbox and checks its behavior against named obligations. <strong>It turns "does the agent behave compliantly?" into a measurable, CI-gateable test</strong> instead of a hope.</p>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="wrap">
+        <h2 class="sec-title rv">One run, from playbook to report.</h2>
+        <div class="dgm-panel rv">
+          <i class="dgm-corner tl"></i><i class="dgm-corner tr"></i><i class="dgm-corner bl"></i><i class="dgm-corner br"></i>
+          <p class="dgm-caption">Nomaya evaluation pipeline schematic</p>
+          <svg class="dgm-svg" viewBox="0 0 960 240" role="img" aria-label="Diagram: scenario playbooks drive the agent under test, its behavior flows to declarative checks and an LLM judge, both feed metrics, and metrics feed the reports and dashboard">
+            <!-- nodes -->
+            <rect class="dgm-node" x="10" y="86" width="150" height="64" rx="8"/>
+            <text class="dgm-node-label" x="85" y="114" text-anchor="middle">PLAYBOOKS</text>
+            <text class="dgm-node-sub" x="85" y="132" text-anchor="middle">yaml, regulation-mapped</text>
+
+            <rect class="dgm-node" x="200" y="86" width="160" height="64" rx="8"/>
+            <text class="dgm-node-label" x="280" y="114" text-anchor="middle">AGENT UNDER TEST</text>
+            <text class="dgm-node-sub" x="280" y="132" text-anchor="middle">any provider via litellm</text>
+
+            <rect class="dgm-node" x="400" y="20" width="160" height="64" rx="8"/>
+            <text class="dgm-node-label" x="480" y="48" text-anchor="middle">CHECKS</text>
+            <text class="dgm-node-sub" x="480" y="66" text-anchor="middle">7 types + pii detector</text>
+
+            <rect class="dgm-node" x="400" y="152" width="160" height="64" rx="8"/>
+            <text class="dgm-node-label" x="480" y="180" text-anchor="middle">LLM JUDGE</text>
+            <text class="dgm-node-sub" x="480" y="198" text-anchor="middle">any provider, swappable</text>
+
+            <rect class="dgm-node" x="600" y="86" width="160" height="64" rx="8"/>
+            <text class="dgm-node-label" x="680" y="114" text-anchor="middle">METRICS</text>
+            <text class="dgm-node-sub" x="680" y="132" text-anchor="middle">recall, precision, pass@k</text>
+
+            <rect class="dgm-node" x="800" y="86" width="150" height="64" rx="8"/>
+            <text class="dgm-node-label" x="875" y="114" text-anchor="middle">REPORTS</text>
+            <text class="dgm-node-sub" x="875" y="132" text-anchor="middle">html / json / next.js</text>
+
+            <!-- wires -->
+            <path class="dgm-wire" d="M 160 118 H 200"/>
+            <path class="dgm-wire" d="M 360 118 C 385 118, 385 52, 400 52"/>
+            <path class="dgm-wire" d="M 360 118 C 385 118, 385 184, 400 184"/>
+            <path class="dgm-wire" d="M 560 52 C 585 52, 585 118, 600 118"/>
+            <path class="dgm-wire" d="M 560 184 C 585 184, 585 118, 600 118"/>
+            <path class="dgm-wire" d="M 760 118 H 800"/>
+          </svg>
+        </div>
+
+        <div class="score-strip rv" aria-label="Suite contents by the numbers">
+          <div class="score-cell"><span class="val">13</span><p class="lbl">Named obligations in the registry, from GLBA and Reg Z to the EU AI Act and DORA</p></div>
+          <div class="score-cell"><span class="val">7</span><p class="lbl">Declarative check types, plus a built-in PII detector</p></div>
+          <div class="score-cell"><span class="val">13</span><p class="lbl">Scenario playbooks shipped with the suite</p></div>
+          <div class="score-cell"><span class="val">$0</span><p class="lbl">Token spend in deterministic mock mode</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2 class="sec-title rv">The model is swappable. The obligations are not.</h2>
+        <div class="feat-grid">
+          <div class="feat rv">
+            <span class="num">regulation-mapped scenarios</span>
+            <h3>Every scenario names its rule</h3>
+            <p>YAML playbooks tie each conversation to specific US and EU obligations: GLBA, UDAAP, Reg Z, Reg E, FCRA, ECOA, SR 11-7, NYDFS 500, the EU AI Act, DORA, GDPR, and CAN-SPAM. A failure points at the obligation it broke.</p>
+          </div>
+          <div class="feat rv">
+            <span class="num">provider-agnostic</span>
+            <h3>Any lab, one interface</h3>
+            <p>The agent under test and the judge can be OpenAI, Anthropic, Google, Mistral, Cohere, Groq, or local Ollama, all through one LiteLLM interface. Adding a lab is a config string, not code.</p>
+          </div>
+          <div class="feat rv">
+            <span class="num">deterministic mock mode</span>
+            <h3>Runs with no API keys at all</h3>
+            <p>Deterministic compliant and naive agent scripts run the full suite offline with zero token spend, which makes it CI-friendly. Mock mode is a first-class path, not a stub.</p>
+          </div>
+          <div class="feat rv">
+            <span class="num">declarative checks</span>
+            <h3>Seven check types, stated up front</h3>
+            <p>required_phrase, prohibited_phrase, regex, no_pii_leak, tool_call_expected, tool_call_forbidden, and llm_judge, backed by a built-in PII and NPI detector.</p>
+          </div>
+          <div class="feat rv">
+            <span class="num">honest metrics</span>
+            <h3>Recall, not just a pass rate</h3>
+            <p>Violation detection rate is reported as recall, the false-positive rate comes from benign control scenarios, and every run carries a severity-weighted score alongside cost and latency.</p>
+          </div>
+          <div class="feat rv">
+            <span class="num">pass@k reliability</span>
+            <h3>Once is not the same as always</h3>
+            <p>Each scenario is run k times, because a model that complies once may not comply consistently. The suite measures the difference.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="start">
+      <div class="wrap">
+        <h2 class="sec-title rv">The first run costs nothing.</h2>
+        <p class="sec-body rv">Python 3.11 or newer. The default run uses deterministic mock mode, so it works offline before you decide which model to point it at.</p>
+        <div class="term rv">
+          <div class="term-bar">nomaya - zsh</div>
+          <div class="term-body">
+<code><span class="p">$</span> uv sync --locked && source .venv/bin/activate
+<span class="p">$</span> nomaya run   <span class="c"># full suite in deterministic mock mode, no API key</span>
+<span class="p">$</span> nomaya run --agent openai/gpt-4o-mini --judge openai/gpt-4o-mini
+<span class="p">$</span> docker compose up --build   <span class="c"># API on :8000, dashboard on :3000</span></code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2 class="sec-title rv">A measurement tool, not a legal opinion.</h2>
+        <p class="sec-body rv">Nomaya tells you how an agent behaved against a written expectation of an obligation. That is a test result, and it should be read as one.</p>
+        <div class="note rv">
+          <strong>Read before relying on the mappings.</strong> The regulation summaries in Nomaya are paraphrased for orientation and are not legal advice. Mappings should be reviewed by qualified compliance staff before relying on them.
+        </div>
+        <div class="facts rv">
+          <span><strong>stack</strong> python 3.11+ / litellm / pydantic v2 / fastapi</span>
+          <span><strong>dashboard</strong> next.js 14</span>
+          <span><strong>storage</strong> sqlite</span>
+          <span><strong>license</strong> mit</span>
+          <span><strong>version</strong> v0.1.0</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-sec">
+      <div class="wrap">
+        <h2 class="sec-title rv">The compliance suite is open.</h2>
+        <p class="sec-body rv">Clone it, run the whole suite offline in mock mode, then point it at the model you plan to ship.</p>
+        <div class="hero-ctas rv">
+          <a class="btn btn-primary" href="https://github.com/kunthive-Labs/Nomaya">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="foot-grid">
+        <div class="foot-brand">
+          <p class="name">Kunthive Labs</p>
+          <p>An AI research and product collective in Bangalore. AI research should produce working software, not just papers.</p>
+        </div>
+        <div class="foot-col">
+          <h4>Projects</h4>
+          <ul>
+            <li><a href="https://kunthive-labs.github.io/Argora/">Argora</a></li>
+            <li><a href="https://kunthive-labs.github.io/Arthaive/">Arthaive</a></li>
+            <li><a href="https://kunthive-labs.github.io/Margana/">Marga</a></li>
+            <li><a href="https://kunthive-labs.github.io/Nomaya/">Nomaya</a></li>
+            <li><a href="https://kunthive-labs.github.io/Saravapos/">Saravapos</a></li>
+          </ul>
+        </div>
+        <div class="foot-col">
+          <h4>Kunthive</h4>
+          <ul>
+            <li><a href="https://labs.kunthive.in">labs.kunthive.in</a></li>
+            <li><a href="https://github.com/kunthive-Labs">GitHub</a></li>
+            <li><a href="mailto:hello@kunthive.in">hello@kunthive.in</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot-bottom">
+        <span>Kunthive Labs &copy; 2026</span>
+        <span>Nomaya, compliance you can measure</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+        });
+      }, { threshold: 0.15 });
+      document.querySelectorAll('.rv').forEach(function (el) { io.observe(el); });
+    })();
+  </script>
+</body>
+</html>
