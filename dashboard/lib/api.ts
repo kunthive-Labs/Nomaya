@@ -65,6 +65,30 @@ export type RunResult = {
   metrics: Metrics;
 };
 
+export type Health = {
+  status: string;
+  database: string;
+  agent_model: string;
+  judge_model: string;
+  allowed_models: string[];
+};
+
+export type ScenarioDefinition = {
+  id: string;
+  tags: string[];
+};
+
+export type Job = {
+  job_id: string;
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  progress: { completed: number; total: number };
+  result: RunResult | null;
+  error: string | null;
+};
+
 async function j<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, { cache: "no-store", ...init });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -74,9 +98,13 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
 export const getLatest = () => j<RunResult>("/api/runs/latest");
 export const listRuns = (limit = 50) => j<RunSummary[]>(`/api/runs?limit=${limit}`);
 export const getRun = (id: string) => j<RunResult>(`/api/runs/${id}`);
-export const triggerRun = (body: any) =>
-  j<RunResult>("/api/run", {
+export const getHealth = () => j<Health>("/api/health");
+export const listScenarios = () => j<ScenarioDefinition[]>("/api/scenarios");
+export const submitJob = (body: { agent: string; judge: string; k: number; tags?: string[] }) =>
+  j<Job>("/api/jobs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+export const getJob = (id: string) => j<Job>(`/api/jobs/${id}`);
+export const cancelJob = (id: string) => j<Job>(`/api/jobs/${id}`, { method: "DELETE" });

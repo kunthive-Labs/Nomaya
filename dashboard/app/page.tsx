@@ -1,57 +1,113 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getLatest, getRun, listRuns, triggerRun, RunResult, RunSummary } from "../lib/api";
-
-const AGENTS = [
-  "mock/compliant-agent",
-  "mock/naive-agent",
-  "openai/gpt-4o-mini",
-  "anthropic/claude-haiku-4-5",
-  "gemini/gemini-2.0-flash",
-  "mistral/mistral-large-latest",
-  "ollama/llama3.1",
-];
+import { useEffect, useMemo, useState } from "react";
+import {
+  cancelJob, getHealth, getJob, getLatest, getRun, listRuns, listScenarios, submitJob,
+  Health, Job, RunResult, RunSummary, ScenarioDefinition, ScenarioRun,
+} from "../lib/api";
 
 const pct = (n: number) => `${(n * 100).toFixed(n === 1 || n === 0 ? 0 : 1)}%`;
 
 export default function Page() {
   const [run, setRun] = useState<RunResult | null>(null);
   const [history, setHistory] = useState<RunSummary[]>([]);
-  const [agent, setAgent] = useState(AGENTS[0]);
+  const [health, setHealth] = useState<Health | null>(null);
+  const [scenarios, setScenarios] = useState<ScenarioDefinition[]>([]);
+  const [agent, setAgent] = useState("");
+  const [judge, setJudge] = useState("");
   const [k, setK] = useState(1);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedScenario, setSelectedScenario] = useState<ScenarioRun | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [job, setJob] = useState<Job | null>(null);
 
-  function refreshHistory() {
-    listRuns().then(setHistory).catch(() => setHistory([]));
+  async function refreshHistory() {
+    try {
+      setHistory(await listRuns());
+    } catch {
+      setHistory([]);
+    }
   }
 
   useEffect(() => {
-    getLatest().then(setRun).catch(() => setRun(null));
-    refreshHistory();
+    async function initialise() {
+      try {
+        const [apiHealth, apiScenarios, latest] = await Promise.all([
+          getHealth(),
+          listScenarios().catch(() => []),
+          getLatest().catch(() => null),
+        ]);
+        setHealth(apiHealth);
+        setScenarios(apiScenarios);
+        setRun(latest);
+        setAgent(apiHealth.agent_model);
+        setJudge(apiHealth.judge_model);
+        await refreshHistory();
+      } catch (e: unknown) {
+        setErr(apiError("Could not load Nomaya", e));
+      } finally {
+        setLoading(false);
+      }
+    }
+    initialise();
   }, []);
 
-  function loadRun(id: string) {
-    getRun(id).then(setRun).catch(() => {});
+  async function loadRun(id: string) {
+    try {
+      setErr(null);
+      setRun(await getRun(id));
+      setSelectedScenario(null);
+    } catch (e: unknown) {
+      setErr(apiError("Could not load that run", e));
+    }
   }
 
   async function doRun() {
     setBusy(true);
     setErr(null);
     try {
-      const r = await triggerRun({ agent, judge: "mock/judge", k });
-      setRun(r);
-      refreshHistory();
-    } catch (e: any) {
-      setErr(`Could not reach the Nomaya API. Start it with \`nomaya serve\`. (${e.message})`);
+      let current = await submitJob({ agent, judge, k, tags: selectedTags.length ? selectedTags : undefined });
+      setJob(current);
+      while (current.status === "queued" || current.status === "running") {
+        await delay(350);
+        current = await getJob(current.job_id);
+        setJob(current);
+      }
+      if (current.status === "completed" && current.result) {
+        setRun(current.result);
+        setSelectedScenario(null);
+        await refreshHistory();
+      } else {
+        setErr(current.error || "The evaluation did not complete.");
+      }
+    } catch (e: unknown) {
+      setErr(apiError("Could not start the evaluation", e));
     } finally {
       setBusy(false);
     }
   }
 
+  async function cancelEvaluation() {
+    if (!job || job.status === "completed" || job.status === "failed" || job.status === "cancelled") return;
+    try {
+      setJob(await cancelJob(job.job_id));
+    } catch (e: unknown) {
+      setErr(apiError("Could not cancel the evaluation", e));
+    }
+  }
+
   const m = run?.metrics;
+  const models = health?.allowed_models.includes("*")
+    ? uniqueModels([health.agent_model, health.judge_model, agent, judge])
+    : health?.allowed_models ?? [];
+  const tags = useMemo(() => [...new Set(scenarios.flatMap((scenario) => scenario.tags))].sort(), [scenarios]);
+  const filteredRuns = run?.scenario_runs.filter((scenario) => (
+    scenario.title.toLowerCase().includes(search.toLowerCase()) ||
+    scenario.scenario_id.toLowerCase().includes(search.toLowerCase())
+  )) ?? [];
 
   return (
     <div className="wrap">
@@ -64,24 +120,53 @@ export default function Page() {
             named obligations — GLBA, UDAAP, Reg Z/E, FCRA, ECOA, SR&nbsp;11-7, NYDFS&nbsp;500, EU&nbsp;AI&nbsp;Act, DORA.
           </p>
         </div>
-        <div className="toolbar">
-          <select value={agent} onChange={(e) => setAgent(e.target.value)}>
-            {AGENTS.map((a) => (
+        <div className="toolbar" aria-label="Evaluation controls">
+          <label className="field compact-field">
+            <span>Agent model</span>
+            <select value={agent} onChange={(e) => setAgent(e.target.value)} disabled={!health || busy}>
+            {models.map((a) => (
               <option key={a} value={a}>{a}</option>
             ))}
-          </select>
-          <select value={k} onChange={(e) => setK(Number(e.target.value))} title="Attempts per scenario (pass@k)">
+            </select>
+          </label>
+          <label className="field compact-field">
+            <span>Judge model</span>
+            <select value={judge} onChange={(e) => setJudge(e.target.value)} disabled={!health || busy}>
+              {models.map((model) => <option key={model} value={model}>{model}</option>)}
+            </select>
+          </label>
+          <label className="field compact-field">
+            <span>Attempts</span>
+            <select value={k} onChange={(e) => setK(Number(e.target.value))} title="Attempts per scenario (pass@k)" disabled={!health || busy}>
             {[1, 3, 5].map((n) => <option key={n} value={n}>k={n}</option>)}
-          </select>
-          <button className="primary" onClick={doRun} disabled={busy}>
+            </select>
+          </label>
+          <button className="primary" onClick={doRun} disabled={busy || !agent || !judge}>
             {busy ? "Running…" : "Run evaluation"}
           </button>
+          {busy && job && <button type="button" className="secondary" onClick={cancelEvaluation}>Cancel evaluation</button>}
         </div>
       </div>
 
-      {err && <p className="err" style={{ marginTop: 24 }}>{err}</p>}
+      {health && <p className="api-status" role="status">API connected · database {health.database} · {health.allowed_models.includes("*") ? "unrestricted model allow-list" : `${models.length} permitted models`}</p>}
+      {job && <JobProgress job={job} />}
 
-      {!run && !err && <div className="empty">No run yet. Pick an agent and hit <b>Run evaluation</b>.</div>}
+      {tags.length > 0 && (
+        <fieldset className="tag-filter" disabled={busy}>
+          <legend>Scenario focus <span>Optional — leave clear to run the full suite.</span></legend>
+          <div className="tag-options">
+            {tags.map((tag) => <label key={tag} className="tag-option">
+              <input type="checkbox" checked={selectedTags.includes(tag)} onChange={() => setSelectedTags((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag])} />
+              <span>{tag}</span>
+            </label>)}
+          </div>
+        </fieldset>
+      )}
+
+      {err && <div className="err" role="alert"><p>{err}</p><button type="button" onClick={() => setErr(null)}>Dismiss</button></div>}
+
+      {loading && <LoadingState />}
+      {!loading && !run && !err && <div className="empty"><h2>No evaluation yet</h2><p>Select permitted models, then run the complete suite or focus on scenario tags above.</p></div>}
 
       {run && m && (
         <>
@@ -120,16 +205,17 @@ export default function Page() {
           )}
 
           <h2>Scenario results</h2>
-          <div className="toolbar" style={{marginBottom: 12}}>
-            <input type="text" placeholder="Search scenarios..." value={search} onChange={e => setSearch(e.target.value)} style={{padding: "6px 12px", borderRadius: 6, border: "1px solid var(--line)", width: "100%"}} />
-          </div>
+          <label className="field search-field">
+            <span>Find a scenario</span>
+            <input type="search" placeholder="Search by title or ID" value={search} onChange={e => setSearch(e.target.value)} />
+          </label>
           <div className="panel scroll">
             <table>
               <thead>
                 <tr><th>Scenario</th><th>Label</th><th>Result</th><th>Checks</th></tr>
               </thead>
               <tbody>
-                {run.scenario_runs.filter(s => s.title.toLowerCase().includes(search.toLowerCase()) || s.scenario_id.toLowerCase().includes(search.toLowerCase())).map((s, i) => (
+                {filteredRuns.map((s, i) => (
                   <tr key={`${s.scenario_id}-${i}`}>
                     <td>
                       <div>{s.title}</div>
@@ -139,16 +225,20 @@ export default function Page() {
                     <td><span className={`badge ${s.passed ? "pass" : "fail"}`}>{s.passed ? "PASS" : "FAIL"}</span></td>
                     <td>
                       {s.check_results.map((c) => (
-                        <span key={c.check_id} className={`chip ${c.passed ? "pass" : "fail"}`} title={`${c.message} ${c.evidence}`.trim()}>
+                        <span key={c.check_id} className={`chip ${c.passed ? "pass" : "fail"}`}>
                           {c.passed ? "✓" : "✕"} {c.check_id}
                         </span>
                       ))}
+                      <button className="text-button" type="button" onClick={() => setSelectedScenario(s)}>View evidence<span className="sr-only"> for {s.title}</span></button>
                     </td>
                   </tr>
                 ))}
+                {filteredRuns.length === 0 && <tr><td colSpan={4} className="table-empty">No scenario results match “{search}”.</td></tr>}
               </tbody>
             </table>
           </div>
+
+          {selectedScenario && <ScenarioDetail scenario={selectedScenario} onClose={() => setSelectedScenario(null)} />}
 
           {history.length > 0 && (
             <>
@@ -160,12 +250,8 @@ export default function Page() {
                   </thead>
                   <tbody>
                     {history.map((r) => (
-                      <tr
-                        key={r.run_id}
-                        className={`row-click ${r.run_id === run.run_id ? "row-active" : ""}`}
-                        onClick={() => loadRun(r.run_id)}
-                      >
-                        <td><span className="sid">{r.run_id}</span></td>
+                      <tr key={r.run_id} className={r.run_id === run.run_id ? "row-active" : ""}>
+                        <td><button className="run-link" type="button" onClick={() => loadRun(r.run_id)} aria-current={r.run_id === run.run_id ? "page" : undefined}><span className="sid">{r.run_id}</span></button></td>
                         <td className="lbl">{new Date(r.created_at).toLocaleString()}</td>
                         <td><span className="tag">{r.agent_model}</span></td>
                         <td>
@@ -192,6 +278,48 @@ export default function Page() {
       )}
     </div>
   );
+}
+
+function LoadingState() {
+  return <div className="loading" aria-live="polite" aria-label="Loading Nomaya data"><div /><div /><div /></div>;
+}
+
+function JobProgress({ job }: { job: Job }) {
+  const total = Math.max(job.progress.total, 1);
+  const complete = Math.min(job.progress.completed, total);
+  const label = job.status === "queued" ? "Evaluation queued" : job.status === "running" ? "Evaluation running" : `Evaluation ${job.status}`;
+  return <section className="job-progress" aria-live="polite">
+    <div><strong>{label}</strong><span>{complete} / {job.progress.total} scenario attempts</span></div>
+    <progress value={complete} max={total} />
+  </section>;
+}
+
+function ScenarioDetail({ scenario, onClose }: { scenario: ScenarioRun; onClose: () => void }) {
+  return <section className="detail panel" aria-labelledby="evidence-title">
+    <div className="detail-head"><div><p className="eyebrow">Scenario evidence</p><h3 id="evidence-title">{scenario.title}</h3><p className="sid">{scenario.scenario_id}</p></div><button type="button" onClick={onClose}>Close</button></div>
+    <div className="evidence-list">
+      {scenario.check_results.map((check) => <article key={check.check_id} className={`evidence-item ${check.passed ? "pass" : "fail"}`}>
+        <div><span className={`badge ${check.passed ? "pass" : "fail"}`}>{check.passed ? "PASS" : "FAIL"}</span> <strong>{check.check_id}</strong> <span className="lbl">{check.severity}</span></div>
+        <p>{check.message || "No evaluator message was returned."}</p>
+        {check.evidence && <pre>{check.evidence}</pre>}
+      </article>)}
+    </div>
+    <h4>Transcript</h4>
+    <div className="transcript">{scenario.transcript.turns.length ? scenario.transcript.turns.map((turn, index) => <article key={`${turn.role}-${index}`}><p className="turn-role">{turn.role}</p><p>{turn.content}</p></article>) : <p className="muted">No transcript was stored for this scenario.</p>}</div>
+  </section>;
+}
+
+function uniqueModels(models: string[]) {
+  return [...new Set(models.filter(Boolean))];
+}
+
+function apiError(prefix: string, error: unknown) {
+  const message = error instanceof Error ? error.message : "Unknown error";
+  return `${prefix}. Check that the Nomaya API is running and configured for this dashboard. (${message})`;
+}
+
+function delay(milliseconds: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function Card({ label, value, note, tone, bar }: { label: string; value: string; note?: string; tone?: "ok" | "bad" | "warn"; bar?: number }) {
