@@ -82,6 +82,7 @@ def run(
         console.print(f"Report: [link]{paths['html']}[/link]")
     if output:
         import json
+
         with open(output, "w") as f:
             json.dump(result.model_dump(), f, indent=2)
         console.print(f"Exported JSON results to {output}")
