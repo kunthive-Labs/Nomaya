@@ -77,6 +77,12 @@ def compute_metrics(run: RunResult, k: int = 1) -> dict[str, Any]:
     p90_latency = latencies[int(len(latencies) * 0.9)] if latencies else 0.0
     total_prompt = sum(r.transcript.usage.prompt_tokens for r in runs)
     total_completion = sum(r.transcript.usage.completion_tokens for r in runs)
+    judge_prompt = sum(r.transcript.judge_usage.prompt_tokens for r in runs)
+    judge_completion = sum(r.transcript.judge_usage.completion_tokens for r in runs)
+    judge_cost = sum(r.transcript.judge_usage.cost_usd for r in runs)
+    judge_latency = sum(r.transcript.judge_usage.latency_ms for r in runs)
+    judge_calls = sum(r.transcript.judge_usage.model_calls for r in runs)
+    model_calls = sum(r.transcript.usage.model_calls for r in runs)
     throughput = (total_runs / (total_latency_ms / 1000.0)) if total_latency_ms > 0 else 0.0
 
     return {
@@ -106,6 +112,12 @@ def compute_metrics(run: RunResult, k: int = 1) -> dict[str, Any]:
         "cost_usd_per_run": round(total_cost / total_runs, 6),
         "tokens_prompt": total_prompt,
         "tokens_completion": total_completion,
+        "model_calls": model_calls,
+        "judge_tokens_prompt": judge_prompt,
+        "judge_tokens_completion": judge_completion,
+        "judge_cost_usd_total": round(judge_cost, 6),
+        "judge_latency_ms_total": round(judge_latency, 2),
+        "judge_model_calls": judge_calls,
         "latency_ms_total": round(total_latency_ms, 2),
         "latency_ms_per_run": round(total_latency_ms / total_runs, 2),
         "throughput_runs_per_sec": round(throughput, 2),

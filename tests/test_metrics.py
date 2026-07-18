@@ -120,3 +120,19 @@ def test_cost_latency_and_throughput_sums():
     assert m["tokens_prompt"] == 200
     assert m["tokens_completion"] == 100
     assert m["throughput_runs_per_sec"] == 1.0
+
+
+def test_judge_usage_is_reported_without_excluding_it_from_totals():
+    run = _srun("s1", ScenarioLabel.VIOLATION_EXPECTED, [_check(True)], cost=0.03, latency=30.0)
+    run.transcript.judge_usage = Usage(
+        prompt_tokens=20,
+        completion_tokens=5,
+        cost_usd=0.01,
+        latency_ms=10.0,
+        model_calls=1,
+    )
+    m = compute_metrics(_result([run]))
+    assert m["cost_usd_total"] == 0.03
+    assert m["judge_cost_usd_total"] == 0.01
+    assert m["judge_tokens_prompt"] == 20
+    assert m["judge_model_calls"] == 1
