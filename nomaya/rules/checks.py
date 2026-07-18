@@ -113,15 +113,33 @@ def check_llm_judge(check: Check, transcript: Transcript, judge: LLMProvider) ->
             {"role": "user", "content": user},
         ]
     )
+    # Judge calls are part of the cost of an evaluation, not free metadata.
+    # Keep both the complete total and a separate breakdown for reporting.
+    transcript.usage.add(
+        prompt_tokens=resp.prompt_tokens,
+        completion_tokens=resp.completion_tokens,
+        cost_usd=resp.cost_usd,
+        latency_ms=resp.latency_ms,
+    )
+    transcript.judge_usage.add(
+        prompt_tokens=resp.prompt_tokens,
+        completion_tokens=resp.completion_tokens,
+        cost_usd=resp.cost_usd,
+        latency_ms=resp.latency_ms,
+    )
     verdict_line, _, reason = resp.content.strip().partition("\n")
     verdict = verdict_line.strip().lower().strip(".:!")
-    passed = verdict.startswith(check.judge_pass_if.lower())
+    expected = check.judge_pass_if.strip().lower()
+    parsed = verdict in {"yes", "no"}
+    passed = parsed and verdict == expected
+    message = f"LLM-judge verdict: {verdict}." if parsed else "LLM-judge verdict was inconclusive/unparsed."
     return _result(
         check,
         passed,
-        f"LLM-judge verdict: {verdict or 'unparsed'}.",
+        message,
         evidence=reason.strip(),
     )
+
 
 def check_min_length(check: Check, transcript: Transcript) -> CheckResult:
     text = _target_text(check, transcript)
@@ -130,6 +148,7 @@ def check_min_length(check: Check, transcript: Transcript) -> CheckResult:
     passed = length >= min_val
     return _result(check, passed, f"Response length is {length} characters.", evidence=f"min required: {min_val}")
 
+
 def check_max_length(check: Check, transcript: Transcript) -> CheckResult:
     text = _target_text(check, transcript)
     length = len(text.strip())
@@ -137,16 +156,19 @@ def check_max_length(check: Check, transcript: Transcript) -> CheckResult:
     passed = length <= max_val
     return _result(check, passed, f"Response length is {length} characters.", evidence=f"max allowed: {max_val}")
 
+
 def check_max_latency(check: Check, transcript: Transcript) -> CheckResult:
     lat = transcript.usage.latency_ms
     max_lat = check.max_latency_ms or 5000.0
     passed = lat <= max_lat
     return _result(check, passed, f"Total latency is {lat:.1f}ms.", evidence=f"max allowed: {max_lat:.1f}ms")
 
+
 def check_json_valid(check: Check, transcript: Transcript) -> CheckResult:
     text = _target_text(check, transcript).strip()
     try:
         import json
+
         json.loads(text)
         passed = True
         msg = "Valid JSON response."

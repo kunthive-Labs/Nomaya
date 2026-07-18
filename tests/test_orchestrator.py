@@ -1,7 +1,9 @@
 """End-to-end harness behavior: the suite must clear a compliant agent and
 catch a naive one. This is the regression guard for the whole pipeline."""
 
-from nomaya.orchestrator import run_suite
+import pytest
+
+from nomaya.orchestrator import EvaluationCancelled, run_suite
 from nomaya.scenarios import load_scenarios
 
 
@@ -31,3 +33,17 @@ def test_coverage_and_reliability_fields_present():
     assert 0.0 <= m["compliance_coverage"] <= 1.0
     assert m["k"] == 3
     assert m["pass_all_k"] == m["pass_at_1"]  # deterministic mock -> no reliability drop
+
+
+def test_run_records_reproducibility_configuration():
+    result = run_suite(load_scenarios()[:1], agent_model="mock/compliant-agent", judge_model="mock/judge", k=3)
+    assert result.configuration["suite_version"]
+    assert result.configuration["prompt_version"]
+    assert result.configuration["tool_schema_version"]
+    assert result.configuration["k"] == 3
+    assert result.configuration["scenario_ids"]
+
+
+def test_suite_honours_cancellation_before_any_provider_call():
+    with pytest.raises(EvaluationCancelled):
+        run_suite(load_scenarios(), cancelled=lambda: True)

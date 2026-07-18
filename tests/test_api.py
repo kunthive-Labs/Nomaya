@@ -83,6 +83,16 @@ def test_auth_enforced_when_token_set(make_client):
     assert client.get("/api/health").status_code == 200
 
 
+def test_reader_token_cannot_start_or_cancel_a_run(make_client, monkeypatch):
+    monkeypatch.setenv("NOMAYA_READ_TOKEN", "reader")
+    client = make_client(token=None)
+    headers = {"Authorization": "Bearer reader"}
+    assert client.get("/api/runs", headers=headers).status_code == 200
+    assert client.post("/api/jobs", json={"save": False}, headers=headers).status_code == 403
+    assert client.delete("/api/jobs/nope", headers=headers).status_code == 403
+    assert client.get("/api/audit-events", headers=headers).status_code == 403
+
+
 def test_runs_tag_filter(make_client):
     client = make_client()
     res = client.post("/api/run", json={"agent": "mock/compliant-agent", "tags": ["lending"], "save": True})
@@ -91,3 +101,32 @@ def test_runs_tag_filter(make_client):
     assert len(listed_filtered) >= 1
     listed_empty = client.get("/api/runs?tag=no-such-tag").json()
     assert len(listed_empty) == 0
+
+
+def test_background_job_submit_and_status(make_client):
+    client = make_client()
+    submitted = client.post("/api/jobs", json={"agent": "mock/compliant-agent", "save": False})
+    assert submitted.status_code == 202
+    job_id = submitted.json()["job_id"]
+    status = client.get(f"/api/jobs/{job_id}")
+    assert status.status_code == 200
+    assert status.json()["status"] in {"queued", "running", "completed"}
+    assert status.json()["progress"]["total"] > 0
+
+
+def test_completed_job_response_is_redacted_by_default(make_client):
+    client = make_client()
+    submitted = client.post("/api/jobs", json={"agent": "mock/naive-agent", "tags": ["pii"], "save": False})
+    assert submitted.status_code == 202
+    job_id = submitted.json()["job_id"]
+    # Mock runs complete quickly; a short bounded poll avoids depending on timing.
+    for _ in range(20):
+        payload = client.get(f"/api/jobs/{job_id}").json()
+        if payload["status"] in {"completed", "failed", "cancelled"}:
+            break
+    assert payload["status"] == "completed"
+    assert "412-55-9931" not in str(payload["result"])
+
+
+def test_unknown_job_returns_404(make_client):
+    assert make_client().get("/api/jobs/nope").status_code == 404

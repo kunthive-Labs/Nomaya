@@ -115,10 +115,29 @@ class Usage(BaseModel):
     latency_ms: float = 0.0
     model_calls: int = 0
 
+    def add(
+        self,
+        *,
+        prompt_tokens: int = 0,
+        completion_tokens: int = 0,
+        cost_usd: float = 0.0,
+        latency_ms: float = 0.0,
+        model_calls: int = 1,
+    ) -> None:
+        """Accumulate one normalized provider response."""
+        self.prompt_tokens += prompt_tokens
+        self.completion_tokens += completion_tokens
+        self.cost_usd += cost_usd
+        self.latency_ms += latency_ms
+        self.model_calls += model_calls
+
 
 class Transcript(BaseModel):
     turns: list[Turn] = Field(default_factory=list)
+    # ``usage`` is the complete evaluation cost, including judge calls.
     usage: Usage = Field(default_factory=Usage)
+    agent_usage: Usage = Field(default_factory=Usage)
+    judge_usage: Usage = Field(default_factory=Usage)
     model: str = ""
 
     def agent_text(self) -> str:
@@ -200,5 +219,7 @@ class RunResult(BaseModel):
     created_at: str
     agent_model: str
     judge_model: str
+    # Configuration required to reproduce and review a historical evaluation.
+    configuration: dict[str, Any] = Field(default_factory=dict)
     scenario_runs: list[ScenarioRun] = Field(default_factory=list)
     metrics: dict[str, Any] = Field(default_factory=dict)

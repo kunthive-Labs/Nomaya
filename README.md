@@ -80,12 +80,30 @@ Copy `.env.example` to `.env`. Besides provider keys, the notable variables:
 | Variable | Default | Meaning |
 |---|---|---|
 | `NOMAYA_AGENT_MODEL` | `mock/compliant-agent` | Default agent under test. |
+| `NOMAYA_SUITE_VERSION` | `2026.1` | Version recorded with each run for reproducibility. |
 | `NOMAYA_JUDGE_MODEL` | `mock/judge` | Default LLM-judge. |
 | `NOMAYA_DB_PATH` | `<repo>/nomaya.sqlite3` | SQLite run history. |
+| `NOMAYA_STORAGE_REDACT_PII` | `true` | Redact detected PII and secret-like tool fields before saving history or report artifacts. |
+| `NOMAYA_ENFORCE_PRIVATE_STORAGE` | `true` | Set SQLite database file permissions to owner-only on POSIX. |
+| `NOMAYA_RETENTION_DAYS` | *(unset)* | Delete saved runs older than this many days when a new run is saved. |
+| `NOMAYA_ENV` | `development` | Set to `production` to require API authentication and reject wildcard model/CORS allow-lists. |
 | `NOMAYA_API_TOKEN` | *(empty — auth off)* | Bearer token for every API route except `/api/health`. |
+| `NOMAYA_READ_TOKEN` / `NOMAYA_RUN_TOKEN` / `NOMAYA_ADMIN_TOKEN` | *(empty)* | Optional scoped bearer tokens for viewing, running, and administering evaluations. |
 | `NOMAYA_ALLOWED_MODELS` | mock models only | Models `POST /api/run` may target; `*` allows any. Protects against strangers burning your provider credits. |
 | `NOMAYA_CORS_ORIGINS` | localhost:3000 | Browser origins allowed by CORS (direct mode only). |
 | `NOMAYA_DB_TIMEOUT` | `5.0` | SQLite database connection timeout in seconds. |
+| `NOMAYA_MAX_CONCURRENT_RUNS` | `2` | Maximum in-process evaluation jobs running at once. |
+| `NOMAYA_MAX_QUEUED_RUNS` | `20` | Maximum queued plus running jobs. |
+| `NOMAYA_MAX_RUN_SCENARIOS` | `100` | Upper bound on scenarios × attempts accepted by the API. |
+| `NOMAYA_MAX_RUN_COST_USD` | `0` | Per-run provider-cost cap; `0` disables the cap. |
+| `NOMAYA_MAX_RUN_DURATION_SECONDS` | `900` | Per-run wall-clock cap; `0` disables it. |
+
+The API supports synchronous compatibility at `POST /api/run` and background
+evaluation at `POST /api/jobs`, with status at `GET /api/jobs/{job_id}` and
+cooperative cancellation at `DELETE /api/jobs/{job_id}`. Read the
+[operations guide](docs/OPERATIONS.md) before exposing the service, and use the
+[evaluation-governance guide](docs/EVALUATION_GOVERNANCE.md) to manage approved
+scenario suites and release evidence.
 
 ## What it measures
 

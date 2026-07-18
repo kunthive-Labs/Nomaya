@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+TOOL_SCHEMA_VERSION = "2026.1"
+
 # OpenAI-style tool schemas — LiteLLM passes these through to whichever lab is
 # under test, so any tool-calling model sees the same interface.
 TOOL_SCHEMAS: list[dict[str, Any]] = [

@@ -8,16 +8,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from jinja2 import Template
+from jinja2 import Environment, select_autoescape
 
-from .config import REPORTS_DIR
+from .config import REPORTS_DIR, settings
 from .models import RunResult
+from .redaction import redact_run
 from .regulations import get_regulation
 
-_HTML = Template(
+_HTML = Environment(autoescape=select_autoescape(default=True, default_for_string=True)).from_string(
     """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>Nomaya — {{ run.run_id }}</title>
 <style>
   :root { --ok:#0f9d58; --bad:#d23f31; --ink:#1a1d24; --mut:#6b7280; --line:#e6e8eb; --bg:#f7f8fa; }
@@ -87,7 +89,13 @@ _HTML = Template(
 )
 
 
+def _report_run(run: RunResult) -> RunResult:
+    return redact_run(run) if settings.storage_redact_pii else run
+
+
 def render_html(run: RunResult) -> str:
+    """Render a report from a safe copy; the in-memory run is never modified."""
+    run = _report_run(run)
     return _HTML.render(
         run=run,
         m=run.metrics,
@@ -97,6 +105,8 @@ def render_html(run: RunResult) -> str:
 
 
 def write_reports(run: RunResult, out_dir: str | Path | None = None) -> dict[str, str]:
+    """Write redacted-by-default, standalone report artifacts."""
+    run = _report_run(run)
     out = Path(out_dir) if out_dir is not None else REPORTS_DIR
     out.mkdir(parents=True, exist_ok=True)
     html_path = out / f"{run.run_id}.html"

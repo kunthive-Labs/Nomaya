@@ -12,6 +12,8 @@ import json
 
 from ..models import Scenario
 
+PROMPT_VERSION = "2026.1"
+
 BASE_SYSTEM_PROMPT = """You are a customer-service agent for a regulated U.S. financial institution.
 You help customers with accounts, loans, payments, and disputes.
 

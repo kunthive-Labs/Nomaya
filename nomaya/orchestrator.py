@@ -14,10 +14,13 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from time import monotonic
 
-from .agent.compliance_agent import build_system_prompt
-from .agent.tools import TOOL_SCHEMAS, execute_tool
+from .agent.compliance_agent import PROMPT_VERSION, build_system_prompt
+from .agent.tools import TOOL_SCHEMA_VERSION, TOOL_SCHEMAS, execute_tool
 from .config import settings
 from .metrics import compute_metrics
 from .models import RunResult, Scenario, ScenarioRun, ToolCall, Transcript, Turn, Usage
@@ -25,6 +28,32 @@ from .providers.base import LLMProvider, get_provider
 from .rules.engine import evaluate
 
 MAX_TOOL_ITERS = 5
+
+
+class EvaluationCancelled(Exception):
+    """Raised when a queued/running evaluation has been cancelled."""
+
+
+class EvaluationLimitExceeded(Exception):
+    """Raised when an evaluation exceeds its configured budget or deadline."""
+
+
+@dataclass(frozen=True)
+class RunLimits:
+    """Cooperative limits checked between provider calls and scenarios."""
+
+    max_cost_usd: float = 0.0
+    max_duration_seconds: float = 0.0
+    cancelled: Callable[[], bool] | None = None
+
+
+def _check_limits(limits: RunLimits, started_at: float, cost_usd: float = 0.0) -> None:
+    if limits.cancelled and limits.cancelled():
+        raise EvaluationCancelled("Evaluation was cancelled.")
+    if limits.max_duration_seconds and monotonic() - started_at > limits.max_duration_seconds:
+        raise EvaluationLimitExceeded("Evaluation exceeded its duration limit.")
+    if limits.max_cost_usd and cost_usd > limits.max_cost_usd:
+        raise EvaluationLimitExceeded("Evaluation exceeded its cost limit.")
 
 
 def _to_openai_tool_calls(tool_calls: list[dict]) -> list[dict]:
@@ -43,7 +72,11 @@ def run_scenario(
     agent: LLMProvider,
     judge: LLMProvider | None,
     attempt: int = 0,
+    limits: RunLimits | None = None,
+    started_at: float | None = None,
 ) -> ScenarioRun:
+    limits = limits or RunLimits()
+    started_at = started_at if started_at is not None else monotonic()
     system_prompt = build_system_prompt(scenario)
     messages: list[dict] = [{"role": "system", "content": system_prompt}]
     turns: list[Turn] = [Turn(role="system", content=system_prompt)]
@@ -57,16 +90,19 @@ def run_scenario(
         final_content = ""
 
         for _ in range(MAX_TOOL_ITERS):
+            _check_limits(limits, started_at, usage.cost_usd)
             resp = agent.complete(
                 messages,
                 tools=TOOL_SCHEMAS,
                 mock_context={"script": scenario.mock, "turn_index": turn_index},
             )
-            usage.prompt_tokens += resp.prompt_tokens
-            usage.completion_tokens += resp.completion_tokens
-            usage.cost_usd += resp.cost_usd
-            usage.latency_ms += resp.latency_ms
-            usage.model_calls += 1
+            usage.add(
+                prompt_tokens=resp.prompt_tokens,
+                completion_tokens=resp.completion_tokens,
+                cost_usd=resp.cost_usd,
+                latency_ms=resp.latency_ms,
+            )
+            _check_limits(limits, started_at, usage.cost_usd)
 
             if resp.tool_calls:
                 messages.append(
@@ -91,8 +127,10 @@ def run_scenario(
 
         turns.append(Turn(role="agent", content=final_content, tool_calls=agent_tool_calls))
 
-    transcript = Transcript(turns=turns, usage=usage, model=agent.model)
+    transcript = Transcript(turns=turns, usage=usage, agent_usage=usage.model_copy(deep=True), model=agent.model)
+    _check_limits(limits, started_at, transcript.usage.cost_usd)
     check_results = evaluate(scenario.checks, transcript, judge)
+    _check_limits(limits, started_at, transcript.usage.cost_usd)
     passed = all(r.passed for r in check_results)
 
     return ScenarioRun(
@@ -111,23 +149,58 @@ def run_suite(
     agent_model: str | None = None,
     judge_model: str | None = None,
     k: int = 1,
+    max_cost_usd: float = 0.0,
+    max_duration_seconds: float = 0.0,
+    cancelled: Callable[[], bool] | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> RunResult:
     agent_model = agent_model or settings.agent_model
     judge_model = judge_model or settings.judge_model
 
     agent = get_provider(agent_model)
     judge = get_provider(judge_model)
+    limits = RunLimits(
+        max_cost_usd=max_cost_usd,
+        max_duration_seconds=max_duration_seconds,
+        cancelled=cancelled,
+    )
+    started_at = monotonic()
+    total_cost = 0.0
+    total_work = len(scenarios) * k
 
     scenario_runs: list[ScenarioRun] = []
     for scenario in scenarios:
         for attempt in range(k):
-            scenario_runs.append(run_scenario(scenario, agent, judge, attempt=attempt))
+            _check_limits(limits, started_at, total_cost)
+            scenario_run = run_scenario(
+                scenario,
+                agent,
+                judge,
+                attempt=attempt,
+                limits=limits,
+                started_at=started_at,
+            )
+            scenario_runs.append(scenario_run)
+            total_cost += scenario_run.transcript.usage.cost_usd
+            _check_limits(limits, started_at, total_cost)
+            if on_progress:
+                on_progress(len(scenario_runs), total_work)
 
     run = RunResult(
         run_id=f"run_{datetime.now(UTC):%Y%m%d_%H%M%S}_{uuid.uuid4().hex[:6]}",
         created_at=datetime.now(UTC).isoformat(),
         agent_model=agent_model,
         judge_model=judge_model,
+        configuration={
+            "suite_version": settings.suite_version,
+            "prompt_version": PROMPT_VERSION,
+            "tool_schema_version": TOOL_SCHEMA_VERSION,
+            "k": k,
+            "scenario_ids": [scenario.id for scenario in scenarios],
+            "scenario_tags": sorted({tag for scenario in scenarios for tag in scenario.tags}),
+            "max_cost_usd": max_cost_usd,
+            "max_duration_seconds": max_duration_seconds,
+        },
         scenario_runs=scenario_runs,
     )
     run.metrics = compute_metrics(run, k=k)

@@ -52,3 +52,23 @@ def test_settings_defaults(monkeypatch):
 def test_settings_parse_comma_lists(monkeypatch):
     monkeypatch.setenv("NOMAYA_ALLOWED_MODELS", " mock/judge , openai/gpt-4o-mini ,")
     assert settings.allowed_models == ["mock/judge", "openai/gpt-4o-mini"]
+
+
+def test_security_settings_parse_and_production_validation(monkeypatch):
+    monkeypatch.setenv("NOMAYA_STORAGE_REDACT_PII", "yes")
+    monkeypatch.setenv("NOMAYA_ENFORCE_PRIVATE_STORAGE", "0")
+    monkeypatch.setenv("NOMAYA_RETENTION_DAYS", "30")
+    assert settings.storage_redact_pii is True
+    assert settings.enforce_private_storage is False
+    assert settings.retention_days == 30
+
+    monkeypatch.setenv("NOMAYA_ENV", "production")
+    monkeypatch.delenv("NOMAYA_API_TOKEN", raising=False)
+    monkeypatch.setenv("NOMAYA_ALLOWED_MODELS", "*")
+    try:
+        settings.validate_production_settings()
+    except ValueError as exc:
+        assert "NOMAYA_API_TOKEN" in str(exc)
+        assert "NOMAYA_ALLOWED_MODELS" in str(exc)
+    else:
+        raise AssertionError("Expected production settings validation to fail")
